@@ -18,7 +18,7 @@
    ========================================================================== */
 :root{
   --areia:#F6EFE4; --pergaminho:#FDFAF4; --linha:#E2D4BE;
-  --tinta:#3B2F27; --tinta2:#6E5C4E; --apagado:#7C6C5E;
+  --tinta:#3B2F27; --tinta2:#6E5C4E; --apagado:#6B5C4F;
   --terracota:#A9502F; --terracota-b:#AC5A33;
   --salvia:#5F7355; --ocre:#9A6B12;
   --sombra:rgba(59,47,39,.13);
@@ -26,13 +26,44 @@
 }
 html.noite{
   --areia:#1C1714; --pergaminho:#292019; --linha:#40342B;
-  --tinta:#F0E4D2; --tinta2:#B29A81; --apagado:#9A8672;
+  --tinta:#F0E4D2; --tinta2:#B29A81; --apagado:#A3907C;
   --terracota:#D08A63; --terracota-b:#8C4B31;
   --salvia:#9DB08E; --ocre:#D9B368;
   --sombra:rgba(0,0,0,.5);
 }
+/* ==========================================================================
+   PADRÕES BOHO
+   Tudo em CSS puro e SVG embutido: nenhuma imagem externa, pra não quebrar
+   o offline nem pesar o arquivo único. Os padrões são MÁSCARAS, então a cor
+   vem sempre das variáveis — dia e noite acertam sozinhos.
+   ========================================================================== */
+:root{
+  /* corrente de losangos: o divisor kilim */
+  --p-kilim:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='9'%3E%3Cpath d='M0 4.5h6M16 4.5h6' stroke='black' stroke-width='1'/%3E%3Cpath d='M11 1l3 3.5-3 3.5-3-3.5z' fill='black'/%3E%3C/svg%3E");
+  /* franja de macramê: risquinho com nó embaixo */
+  --p-franja:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='15'%3E%3Cpath d='M6.5 0v9' stroke='black' stroke-width='1.3'/%3E%3Ccircle cx='6.5' cy='11.6' r='1.7' fill='black'/%3E%3C/svg%3E");
+  /* arcos encadeados: a faixa que fecha a tela */
+  --p-arcos:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='14'%3E%3Cpath d='M1 13a12 12 0 0 1 24 0' fill='none' stroke='black' stroke-width='1.1'/%3E%3C/svg%3E");
+}
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
-html,body{margin:0; padding:0; background:var(--areia); color:var(--tinta)}
+
+/* trama diagonal no fundo — bem baixa, dá textura de tecido sem sujar o texto */
+body::before{
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  /* dois fios cruzados, um terracota e um sálvia: dá trama de verdade em vez
+     de um quadriculado cinza. Bem baixo — é textura, não desenho. */
+  background-image:
+    repeating-linear-gradient(45deg,
+      color-mix(in srgb, var(--terracota) 8%, transparent) 0 1px, transparent 1px 15px),
+    repeating-linear-gradient(-45deg,
+      color-mix(in srgb, var(--salvia) 7%, transparent) 0 1px, transparent 1px 15px);
+}
+html.noite body::before{opacity:1}
+/* O fundo fica SÓ no html. Se o body também tiver background, ele pinta por
+   cima do ::before de z-index:-1 e a trama some — foi exatamente o que
+   aconteceu, e só de dia, porque de noite o contraste era outro. */
+html{background:var(--areia); color:var(--tinta)}
+body{margin:0; padding:0}
 body{
   font:400 17px/1.6 "Assistant",-apple-system,system-ui,"Segoe UI",sans-serif;
   padding-bottom:calc(78px + env(safe-area-inset-bottom));
@@ -65,6 +96,23 @@ main{padding:0 18px 20px; max-width:620px; margin:0 auto}
   border:1px solid var(--linha); border-bottom:none;
   border-radius:145px 145px 0 0; opacity:.55; pointer-events:none;
 }
+/* leque de raios saindo do topo do arco */
+.arco::before{
+  content:""; position:absolute; top:14px; left:50%; transform:translateX(-50%);
+  width:210px; height:105px; pointer-events:none; opacity:.5;
+  background:repeating-conic-gradient(from 180deg at 50% 100%,
+    var(--linha) 0deg 1.6deg, transparent 1.6deg 10deg);
+  -webkit-mask:radial-gradient(circle at 50% 100%, #000 30%, transparent 74%);
+  mask:radial-gradient(circle at 50% 100%, #000 30%, transparent 74%);
+}
+.arco > *{position:relative; z-index:1}
+
+/* franja de macramê pendurada embaixo do arco */
+.franja{
+  height:15px; margin:-12px 0 20px; background:var(--linha);
+  -webkit-mask:var(--p-franja) repeat-x center; mask:var(--p-franja) repeat-x center;
+  opacity:.58;
+}
 .arco .quando{font-size:13px; color:var(--terracota); letter-spacing:.04em; margin:8px 0 3px}
 .arco .oque{font-size:24px; margin:0}
 .arco .hora{font-size:15px; color:var(--tinta2); margin-top:3px}
@@ -73,7 +121,17 @@ main{padding:0 18px 20px; max-width:620px; margin:0 auto}
 /* ---------- microfone ---------- */
 .micwrap{text-align:center; margin:6px 0 14px}
 .halo{width:126px; height:126px; margin:0 auto; border-radius:50%;
-  border:1px solid var(--linha); display:flex; align-items:center; justify-content:center}
+  border:1px solid var(--linha); display:flex; align-items:center; justify-content:center;
+  position:relative}
+/* coroa de raios em volta do microfone — o sol boho */
+.halo::before{
+  content:""; position:absolute; inset:-14px; border-radius:50%; pointer-events:none;
+  background:repeating-conic-gradient(from 0deg,
+    var(--terracota) 0deg 1.1deg, transparent 1.1deg 10deg);
+  -webkit-mask:radial-gradient(circle, transparent 62%, #000 66%, #000 84%, transparent 88%);
+  mask:radial-gradient(circle, transparent 64%, #000 68%, #000 84%, transparent 88%);
+  opacity:.32;
+}
 .halo2{width:106px; height:106px; border-radius:50%;
   border:1px dashed color-mix(in srgb, var(--terracota) 40%, transparent);
   display:flex; align-items:center; justify-content:center}
@@ -92,8 +150,15 @@ main{padding:0 18px 20px; max-width:620px; margin:0 auto}
 /* ---------- tecido: divisor ---------- */
 .tecido{display:flex; align-items:center; gap:9px; margin:20px 0 8px}
 .tecido span{font-size:12.5px; color:var(--tinta2); letter-spacing:.09em; white-space:nowrap}
-.tecido i{flex:1; height:1px;
-  background:repeating-linear-gradient(to left, var(--linha) 0 5px, transparent 5px 10px)}
+.tecido i{
+  flex:1; height:9px; background:var(--linha);
+  -webkit-mask:var(--p-kilim) repeat-x center; mask:var(--p-kilim) repeat-x center;
+}
+/* losango de acento antes do rótulo da seção */
+.tecido span::before{
+  content:""; display:inline-block; width:7px; height:7px; margin-inline-end:7px;
+  background:var(--terracota); transform:rotate(45deg); vertical-align:middle; opacity:.75;
+}
 
 /* ---------- listas ---------- */
 .item{display:flex; gap:12px; align-items:center; padding:13px 2px;
@@ -108,6 +173,11 @@ main{padding:0 18px 20px; max-width:620px; margin:0 auto}
 .item.feito .t,.item.feito .h{color:var(--apagado); text-decoration:line-through}
 .item.feito .p{background:var(--linha)}
 .vazio{text-align:center; color:var(--tinta2); padding:34px 10px; font-size:15.5px}
+/* faixa de arcos encadeados fechando a tela */
+.rodape-boho{
+  height:14px; margin:26px 0 4px; background:var(--linha); opacity:.7;
+  -webkit-mask:var(--p-arcos) repeat-x center; mask:var(--p-arcos) repeat-x center;
+}
 
 /* ---------- chips ---------- */
 .chips{display:flex; gap:8px; flex-wrap:wrap; margin:4px 0 10px}
@@ -118,7 +188,13 @@ main{padding:0 18px 20px; max-width:620px; margin:0 auto}
 
 /* ---------- cartões e botões ---------- */
 .card{background:var(--pergaminho); border:1px solid var(--linha);
-  border-radius:var(--r); padding:14px 16px; margin-bottom:12px}
+  border-radius:var(--r); padding:14px 16px; margin-bottom:12px; position:relative;
+  overflow:hidden}
+/* losango discreto no canto — o detalhe que dá o ar de tecido */
+.card::after{
+  content:""; position:absolute; top:-9px; inset-inline-start:-9px; width:18px; height:18px;
+  background:var(--terracota); transform:rotate(45deg); opacity:.14; pointer-events:none;
+}
 .btn{padding:13px 20px; border-radius:999px; border:1px solid var(--linha);
   background:var(--pergaminho); color:var(--tinta); cursor:pointer; font-size:16px}
 .btn.pri{background:var(--terracota-b); border-color:var(--terracota-b); color:#FDFAF4}
@@ -128,9 +204,16 @@ main{padding:0 18px 20px; max-width:620px; margin:0 auto}
 
 /* ---------- financeiro ---------- */
 .tiles{display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px; margin-bottom:4px}
-.tile{background:var(--pergaminho); border:1px solid var(--linha); border-radius:16px;
-  padding:13px 8px; text-align:center}
-.tile.saldo{border-radius:60px 60px 16px 16px; padding-top:17px}
+.tile{background:var(--pergaminho); border:1px solid var(--linha);
+  border-radius:44px 44px 16px 16px; padding:16px 8px 13px; text-align:center;
+  position:relative}
+.tile.saldo{border-radius:60px 60px 16px 16px; padding-top:19px}
+/* arquinho interno: o motivo do arco grande, em miniatura */
+.tile::before{
+  content:""; position:absolute; inset:5px 5px auto 5px; height:44px;
+  border:1px solid var(--linha); border-bottom:none; border-radius:40px 40px 0 0;
+  opacity:.5; pointer-events:none;
+}
 .tile .r{font-size:11.5px; letter-spacing:.06em; color:var(--tinta2)}
 .tile .v{font-size:19px; margin-top:3px}
 .tile .v.e{color:var(--salvia)} .tile .v.s{color:var(--terracota)}
@@ -195,7 +278,8 @@ nav button{flex:1; background:none; border:none; cursor:pointer; padding:5px 2px
   display:flex; flex-direction:column; align-items:center; gap:3px;
   font-size:11.5px; color:var(--tinta2)}
 nav button.on{color:var(--terracota)}
-nav .pt{width:6px; height:6px; border-radius:50%; background:currentColor; opacity:0}
+nav .pt{width:16px; height:8px; border-radius:8px 8px 0 0; background:currentColor;
+  opacity:0; transition:opacity .18s}
 nav button.on .pt{opacity:1}
 
 #toast{position:fixed; inset-inline:0; bottom:96px; z-index:60; display:flex; justify-content:center;
@@ -1663,10 +1747,13 @@ function telaHoje(){
       '<div class="hora num">' + esc(prox.n.hora || "") + "</div>";
   } else {
     arco.innerHTML =
-      '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--salvia)" stroke-width="1.2" stroke-linecap="round"><path d="M4 13.5c3-4 5.5-4 8 0s5 4 8 0"/><path d="M4 18c3-4 5.5-4 8 0s5 4 8 0"/></svg>' +
+      '<svg width="42" height="30" viewBox="0 0 42 30" fill="none" stroke="var(--ocre)" stroke-width="1.15" stroke-linecap="round">' +
+      '<path d="M9 24a12 12 0 0 1 24 0"/><path d="M14 24a7 7 0 0 1 14 0"/>' +
+      '<path d="M21 3v4M6 12l2.4 2.4M36 12l-2.4 2.4M2 24h5M35 24h5"/></svg>' +
       '<div class="oque serif">אין כלום בקרוב</div>';
   }
   v.appendChild(arco);
+  v.appendChild(el("div", "franja"));
   v.appendChild(blocoMic());
 
   /* --- atalho de sonho: um toque, sem escolher nada --- */
@@ -2130,6 +2217,7 @@ function render(){
     aba === "dinheiro" ? telaDinheiro() :
     aba === "mais"     ? telaMais() : telaHoje();
   v.appendChild(tela);
+  v.appendChild(el("div", "rodape-boho"));
 }
 
 async function carregar(){
