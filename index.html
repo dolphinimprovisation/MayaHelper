@@ -1,0 +1,2166 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F6EFE4">
+<title>מאיה</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700&family=Assistant:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================================
+   Paleta boho. Dia e noite não são dois temas: é o mesmo app antes e depois
+   do sol se pôr. Todos os pares de cor foram conferidos contra o mínimo de
+   acessibilidade — se mexer numa cor, reconfira.
+   ========================================================================== */
+:root{
+  --areia:#F6EFE4; --pergaminho:#FDFAF4; --linha:#E2D4BE;
+  --tinta:#3B2F27; --tinta2:#6E5C4E; --apagado:#7C6C5E;
+  --terracota:#A9502F; --terracota-b:#AC5A33;
+  --salvia:#5F7355; --ocre:#9A6B12;
+  --sombra:rgba(59,47,39,.13);
+  --r:22px;
+}
+html.noite{
+  --areia:#1C1714; --pergaminho:#292019; --linha:#40342B;
+  --tinta:#F0E4D2; --tinta2:#B29A81; --apagado:#9A8672;
+  --terracota:#D08A63; --terracota-b:#8C4B31;
+  --salvia:#9DB08E; --ocre:#D9B368;
+  --sombra:rgba(0,0,0,.5);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{margin:0; padding:0; background:var(--areia); color:var(--tinta)}
+body{
+  font:400 17px/1.6 "Assistant",-apple-system,system-ui,"Segoe UI",sans-serif;
+  padding-bottom:calc(78px + env(safe-area-inset-bottom));
+  overscroll-behavior-y:none;
+}
+h1,h2,h3,.serif{font-family:"Frank Ruhl Libre","Assistant",Georgia,serif; font-weight:500}
+button,input,textarea,select{font-family:inherit; font-size:inherit; color:inherit}
+.num{direction:ltr; unicode-bidi:embed; font-variant-numeric:tabular-nums}
+
+/* ---------- cabeçalho ---------- */
+header{
+  position:sticky; top:0; z-index:20; background:var(--areia);
+  padding:calc(16px + env(safe-area-inset-top)) 18px 10px;
+  display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+}
+header h1{font-size:26px; margin:0; line-height:1.15}
+header .sub{color:var(--tinta2); font-size:13.5px; margin-top:2px}
+header .ico{flex:none; opacity:.9}
+
+main{padding:0 18px 20px; max-width:620px; margin:0 auto}
+
+/* ---------- arco: o motivo boho central ---------- */
+.arco{
+  background:var(--pergaminho); border:1px solid var(--linha);
+  border-radius:150px 150px var(--r) var(--r);
+  padding:22px 22px 18px; text-align:center; position:relative; margin-bottom:16px;
+}
+.arco::after{
+  content:""; position:absolute; inset:7px 7px auto 7px; height:150px;
+  border:1px solid var(--linha); border-bottom:none;
+  border-radius:145px 145px 0 0; opacity:.55; pointer-events:none;
+}
+.arco .quando{font-size:13px; color:var(--terracota); letter-spacing:.04em; margin:8px 0 3px}
+.arco .oque{font-size:24px; margin:0}
+.arco .hora{font-size:15px; color:var(--tinta2); margin-top:3px}
+.arco.calmo .oque{font-size:19px; color:var(--tinta2)}
+
+/* ---------- microfone ---------- */
+.micwrap{text-align:center; margin:6px 0 14px}
+.halo{width:126px; height:126px; margin:0 auto; border-radius:50%;
+  border:1px solid var(--linha); display:flex; align-items:center; justify-content:center}
+.halo2{width:106px; height:106px; border-radius:50%;
+  border:1px dashed color-mix(in srgb, var(--terracota) 40%, transparent);
+  display:flex; align-items:center; justify-content:center}
+.mic{width:84px; height:84px; border-radius:50%; background:var(--terracota-b);
+  border:none; display:flex; align-items:center; justify-content:center; cursor:pointer;
+  box-shadow:0 5px 16px color-mix(in srgb, var(--terracota) 34%, transparent);
+  transition:transform .12s}
+.mic:active{transform:scale(.94)}
+.mic.on{background:#8E3B22; animation:pulsa 1.4s ease-in-out infinite}
+@keyframes pulsa{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--terracota) 45%, transparent)}
+                 50%{box-shadow:0 0 0 16px transparent}}
+.micwrap .diz{margin-top:11px; font-size:14.5px; color:var(--tinta2); min-height:22px}
+.falaviva{margin:8px auto 0; max-width:460px; font-size:17px; line-height:1.5; min-height:26px}
+.falaviva .par{color:var(--tinta2)}
+
+/* ---------- tecido: divisor ---------- */
+.tecido{display:flex; align-items:center; gap:9px; margin:20px 0 8px}
+.tecido span{font-size:12.5px; color:var(--tinta2); letter-spacing:.09em; white-space:nowrap}
+.tecido i{flex:1; height:1px;
+  background:repeating-linear-gradient(to left, var(--linha) 0 5px, transparent 5px 10px)}
+
+/* ---------- listas ---------- */
+.item{display:flex; gap:12px; align-items:center; padding:13px 2px;
+  border-bottom:1px solid var(--linha); width:100%; background:none; border-left:none;
+  border-right:none; border-top:none; text-align:right; cursor:pointer}
+.item:last-child{border-bottom:none}
+.item .h{font-size:14px; color:var(--tinta2); min-width:46px; flex:none}
+.item .t{flex:1; font-size:16.5px}
+.item .t small{display:block; color:var(--tinta2); font-size:13px; margin-top:2px}
+.item .p{width:8px; height:8px; border-radius:50%; background:var(--salvia); flex:none}
+.item.agora .p{background:var(--terracota)}
+.item.feito .t,.item.feito .h{color:var(--apagado); text-decoration:line-through}
+.item.feito .p{background:var(--linha)}
+.vazio{text-align:center; color:var(--tinta2); padding:34px 10px; font-size:15.5px}
+
+/* ---------- chips ---------- */
+.chips{display:flex; gap:8px; flex-wrap:wrap; margin:4px 0 10px}
+.chip{padding:8px 15px; border-radius:999px; border:1px solid var(--linha);
+  background:var(--pergaminho); color:var(--tinta2); cursor:pointer; font-size:14.5px}
+.chip.on{background:var(--terracota-b); border-color:var(--terracota-b); color:#FDFAF4}
+.chip.grande{padding:13px 20px; font-size:16px; color:var(--tinta)}
+
+/* ---------- cartões e botões ---------- */
+.card{background:var(--pergaminho); border:1px solid var(--linha);
+  border-radius:var(--r); padding:14px 16px; margin-bottom:12px}
+.btn{padding:13px 20px; border-radius:999px; border:1px solid var(--linha);
+  background:var(--pergaminho); color:var(--tinta); cursor:pointer; font-size:16px}
+.btn.pri{background:var(--terracota-b); border-color:var(--terracota-b); color:#FDFAF4}
+.btn.dng{background:none; border-color:#B0553A; color:#B0553A}
+.btn:active{opacity:.8}
+.linha-btn{display:flex; gap:10px; flex-wrap:wrap}
+
+/* ---------- financeiro ---------- */
+.tiles{display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px; margin-bottom:4px}
+.tile{background:var(--pergaminho); border:1px solid var(--linha); border-radius:16px;
+  padding:13px 8px; text-align:center}
+.tile.saldo{border-radius:60px 60px 16px 16px; padding-top:17px}
+.tile .r{font-size:11.5px; letter-spacing:.06em; color:var(--tinta2)}
+.tile .v{font-size:19px; margin-top:3px}
+.tile .v.e{color:var(--salvia)} .tile .v.s{color:var(--terracota)}
+.lanc{display:flex; align-items:center; gap:11px; padding:12px 2px;
+  border-bottom:1px solid var(--linha); width:100%; background:none; border-left:none;
+  border-right:none; border-top:none; text-align:right; cursor:pointer}
+.lanc:last-child{border-bottom:none}
+.seta{width:26px; height:26px; border-radius:50%; display:flex; align-items:center;
+  justify-content:center; flex:none; font-size:13px}
+.seta.e{background:color-mix(in srgb, var(--salvia) 20%, transparent); color:var(--salvia)}
+.seta.s{background:color-mix(in srgb, var(--terracota) 18%, transparent); color:var(--terracota)}
+.lanc .onde{flex:1; font-size:16px}
+.lanc .val{font-size:16px}
+.lanc .val.e{color:var(--salvia)}
+.barra{margin-top:12px}
+.barra .l{display:flex; justify-content:space-between; font-size:14px; color:var(--tinta2); margin-bottom:5px}
+.barra .g{height:7px; border-radius:999px; background:var(--linha); overflow:hidden}
+.barra .g i{display:block; height:100%; border-radius:999px; background:var(--terracota-b)}
+.mesnav{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px}
+.mesnav button{background:none; border:1px solid var(--linha); border-radius:999px;
+  width:40px; height:40px; cursor:pointer; color:var(--tinta)}
+
+/* ---------- formulário ---------- */
+.f{margin-bottom:14px}
+.f label{display:block; font-size:13.5px; color:var(--tinta2); margin-bottom:5px}
+.f input,.f textarea,.f select{
+  width:100%; padding:12px 14px; border:1px solid var(--linha); border-radius:14px;
+  background:var(--areia); color:var(--tinta)}
+.f textarea{min-height:92px; resize:vertical; line-height:1.55}
+.f .dica{font-size:12.5px; color:var(--tinta2); margin-top:5px}
+.err{background:color-mix(in srgb, var(--terracota) 14%, transparent);
+  border:1px solid var(--terracota); color:var(--terracota);
+  border-radius:14px; padding:11px 14px; margin-bottom:12px; font-size:15px}
+.hide{display:none}
+
+/* ---------- folha deslizante ---------- */
+#scrim{position:fixed; inset:0; background:rgba(28,23,20,.5); opacity:0; pointer-events:none;
+  transition:opacity .22s; z-index:40}
+#scrim.on{opacity:1; pointer-events:auto}
+#sheet{position:fixed; inset-inline:0; bottom:0; z-index:50; background:var(--areia);
+  border-radius:26px 26px 0 0; transform:translateY(102%); transition:transform .26s;
+  max-height:92vh; display:flex; flex-direction:column; box-shadow:0 -6px 30px var(--sombra)}
+#sheet.on{transform:none}
+#sheet .cab{padding:18px 18px 8px; display:flex; align-items:center; justify-content:space-between}
+#sheet .cab h2{margin:0; font-size:20px}
+#sheet .corpo{padding:6px 18px 10px; overflow:auto; flex:1}
+#sheet .pe{padding:12px 18px calc(16px + env(safe-area-inset-bottom));
+  display:flex; gap:10px; border-top:1px solid var(--linha)}
+#sheet .pe .btn{flex:1; text-align:center}
+.fala-orig{background:var(--pergaminho); border:1px solid var(--linha); border-radius:16px;
+  padding:12px 14px; color:var(--tinta2); font-size:15px; margin-bottom:14px; line-height:1.5}
+.ensinar{width:100%; margin-top:8px; padding:11px 14px; border-radius:14px;
+  border:1px dashed var(--ocre); background:none; color:var(--ocre); cursor:pointer; font-size:14.5px}
+.pisca{animation:pisca 1s ease-in-out 2}
+@keyframes pisca{50%{border-color:var(--terracota); background:color-mix(in srgb, var(--terracota) 9%, var(--pergaminho))}}
+
+/* ---------- navegação ---------- */
+nav{position:fixed; inset-inline:0; bottom:0; z-index:30; display:flex;
+  background:var(--pergaminho); border-top:1px solid var(--linha);
+  padding:8px 4px calc(8px + env(safe-area-inset-bottom))}
+nav button{flex:1; background:none; border:none; cursor:pointer; padding:5px 2px;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  font-size:11.5px; color:var(--tinta2)}
+nav button.on{color:var(--terracota)}
+nav .pt{width:6px; height:6px; border-radius:50%; background:currentColor; opacity:0}
+nav button.on .pt{opacity:1}
+
+#toast{position:fixed; inset-inline:0; bottom:96px; z-index:60; display:flex; justify-content:center;
+  pointer-events:none; opacity:0; transition:opacity .2s}
+#toast.on{opacity:1}
+#toast span{background:var(--tinta); color:var(--areia); padding:11px 18px;
+  border-radius:999px; font-size:15px; max-width:88%; text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1 id="hdT">היום</h1>
+    <div class="sub" id="hdS"></div>
+  </div>
+  <div class="ico" id="hdI"></div>
+</header>
+
+<main id="view"></main>
+
+<nav id="nav"></nav>
+<div id="scrim"></div>
+<div id="sheet">
+  <div class="cab"><h2 id="shT"></h2></div>
+  <div class="corpo" id="shC"></div>
+  <div class="pe" id="shP"></div>
+</div>
+<div id="toast"><span></span></div>
+
+<script>
+/* ==========================================================================
+   MOTOR — colado por montar.js a partir de motor.js.
+   Não edite aqui: edite motor.js, rode os testes, e rode `node montar.js`.
+   ========================================================================== */
+/* ==========================================================================
+   MAYA — motor de interpretação de fala em hebraico
+   --------------------------------------------------------------------------
+   Este arquivo é colado inteiro dentro do index.html. Fica separado só pra
+   poder rodar a bateria de testes no Node, sem navegador.
+
+   A regra de arquitetura deste app (vinda do documento de partida):
+     A TRANSCRIÇÃO É O CONTEÚDO. Não se conserta o texto contra vocabulário.
+     O vocabulário fechado serve pra achar o GRUPO, o LUGAR e a PESSOA.
+   A ÚNICA exceção é a lista de compras: ali os itens são um mundo pequeno e
+   repetido, e o casamento por semelhança vale inteiro.
+   ========================================================================== */
+
+/* ---------- normalização do hebraico ----------
+   Três coisas que o português não tem e que quebram tudo se ignoradas:
+   1. niqud (os pontinhos de vogal) — o reconhecimento às vezes manda
+   2. letras finais: ך ם ן ף ץ são as mesmas letras que כ מ נ פ צ
+   3. prefixos colados: ו ב כ ל מ ש ה grudam na palavra. "בשוק" é
+      "no mercado" — a palavra é "שוק". Sem tratar isso, nada casa com nada. */
+
+var FINAIS = {"ך":"כ","ם":"מ","ן":"נ","ף":"פ","ץ":"צ"};
+var RE_HE = "\u05D0-\u05EA";                 /* א até ת */
+
+function normHe(w){
+  return String(w == null ? "" : w)
+    .replace(/[\u0591-\u05C7]/g, "")                  /* niqud e ta'amim */
+    .replace(/[\u05F3\u05F4'"`\u2018\u2019\u201C\u201D]/g, "")  /* geresh e aspas */
+    .replace(/[\u05DA\u05DD\u05DF\u05E3\u05E5]/g, function(c){ return FINAIS[c]; });
+}
+
+var PREFIXOS = "\u05D5\u05D1\u05DB\u05DC\u05DE\u05E9\u05D4";   /* ו ב כ ל מ ש ה */
+
+/* as formas possíveis de uma palavra, tirando prefixos colados.
+   A original vem sempre primeiro. Só tira prefixo se sobrar palavra de
+   verdade (>= 2 letras), senão "מים" (água) viraria "ים" (mar). */
+function formas(w){
+  w = String(w || "");
+  var out = [w];
+  if(w.length >= 3 && PREFIXOS.indexOf(w[0]) >= 0){
+    out.push(w.slice(1));
+    if(w.length >= 4 && PREFIXOS.indexOf(w[1]) >= 0) out.push(w.slice(2));
+  }
+  return out;
+}
+/* tira só o "ו" de ligação (e) — usado ao partir a lista de compras */
+function semVav(w){ w = String(w||""); return (w.length >= 3 && w[0] === "\u05D5") ? w.slice(1) : w; }
+
+/* ---------- números falados ----------
+   O Chrome em he-IL costuma devolver dígito quando ela fala um número, mas
+   nas horas quase nunca: "בשלוש" vem por extenso. */
+var NUM_HE = {
+  "\u05D0\u05E4\u05E1":0,                                         /* אפס */
+  "\u05D0\u05D7\u05EA":1, "\u05D0\u05D7\u05D3":1,                 /* אחת אחד */
+  "\u05E9\u05EA\u05D9\u05D9\u05DD":2, "\u05E9\u05EA\u05D9":2,     /* שתיים שתי */
+  "\u05E9\u05E0\u05D9\u05D9\u05DD":2,                             /* שניים */
+  "\u05E9\u05EA\u05D9\u05DD":2, "\u05E9\u05E0\u05D9\u05DD":2,     /* שתים שנים */
+  "\u05E9\u05DC\u05D5\u05E9":3, "\u05E9\u05DC\u05D5\u05E9\u05D4":3,
+  "\u05D0\u05E8\u05D1\u05E2":4, "\u05D0\u05E8\u05D1\u05E2\u05D4":4,
+  "\u05D7\u05DE\u05E9":5, "\u05D7\u05DE\u05D9\u05E9\u05D4":5,
+  "\u05E9\u05E9":6, "\u05E9\u05D9\u05E9\u05D4":6,
+  "\u05E9\u05D1\u05E2":7, "\u05E9\u05D1\u05E2\u05D4":7,
+  "\u05E9\u05DE\u05D5\u05E0\u05D4":8,
+  "\u05EA\u05E9\u05E2":9, "\u05EA\u05E9\u05E2\u05D4":9,
+  "\u05E2\u05E9\u05E8":10, "\u05E2\u05E9\u05E8\u05D4":10,
+  "\u05E2\u05E9\u05E8\u05D9\u05DD":20,
+  "\u05E9\u05DC\u05D5\u05E9\u05D9\u05DD":30,
+  "\u05D0\u05E8\u05D1\u05E2\u05D9\u05DD":40,
+  "\u05D7\u05DE\u05D9\u05E9\u05D9\u05DD":50,
+  "\u05E9\u05D9\u05E9\u05D9\u05DD":60,
+  "\u05E9\u05D1\u05E2\u05D9\u05DD":70,
+  "\u05E9\u05DE\u05D5\u05E0\u05D9\u05DD":80,
+  "\u05EA\u05E9\u05E2\u05D9\u05DD":90,
+  "\u05DE\u05D0\u05D4":100, "\u05DE\u05D0\u05EA\u05D9\u05D9\u05DD":200,
+  "\u05D0\u05DC\u05E3":1000
+};
+/* onze e doze são duas palavras */
+var NUM_COMPOSTO = {
+  "\u05D0\u05D7\u05EA \u05E2\u05E9\u05E8\u05D4":11,   /* אחת עשרה */
+  "\u05D0\u05D7\u05D3 \u05E2\u05E9\u05E8":11,         /* אחד עשר */
+  "\u05E9\u05EA\u05D9\u05DD \u05E2\u05E9\u05E8\u05D4":12,
+  "\u05E9\u05E0\u05D9\u05DD \u05E2\u05E9\u05E8":12
+};
+
+/* A armadilha do "meia" do documento vale igual aqui: חצי quase nunca é 0,5
+   sozinho — é "e meia" da hora, ou "meio quilo". Por isso não entra no mapa
+   de números: é decidido pelo contexto. */
+/* ---- as listas acima são escritas com as letras finais (ם ן ך ץ ף), que é
+   como se escreve hebraico de verdade. O tokenizador normaliza tudo para as
+   formas não-finais, então as listas precisam passar pelo mesmo normalizador,
+   senão NADA casa com NADA. Este bloco foi escrito depois de 22 testes
+   falharem por exatamente isso. ---- */
+function normChaves(o){
+  var r = {};
+  Object.keys(o).forEach(function(k){ r[normHe(k)] = o[k]; });
+  return r;
+}
+function normLista(a){ return a.map(normHe); }
+NUM_HE = normChaves(NUM_HE);
+NUM_COMPOSTO = normChaves(NUM_COMPOSTO);
+
+var MEIO   = "\u05D7\u05E6\u05D9";     /* חצי */
+var QUARTO = "\u05E8\u05D1\u05E2";     /* רבע */
+
+/* ==========================================================================
+   TOKENIZADOR
+   Cada token guarda:
+     t  — o texto já normalizado (números viram dígitos)
+     a,b— índices da primeira e da última palavra original que ele cobre
+     w  — a palavra original normalizada, COM o prefixo. É o que permite
+          saber que "בשלוש" é hora e não o dia 3.
+     d  — verdadeiro se ela falou em dígito, não por extenso
+   ========================================================================== */
+function tokenizar(fala){
+  var orig = String(fala == null ? "" : fala).trim().split(/\s+/).filter(Boolean);
+  var passo = [];
+
+  orig.forEach(function(w, i){
+    var x = normHe(w);
+    var fim = /[.;!?,]/.test(x);
+
+    /* hora escrita: "14:30", "ב14:30" */
+    var mh = x.match(new RegExp("^([" + PREFIXOS + "]*)(\\d{1,2}):(\\d{2})$"));
+    if(mh){
+      passo.push({t:"@" + mh[2] + ":" + mh[3], i:i, w:x, d:true});
+      if(fim) passo.push({t:"|", i:i, w:"", d:false});
+      return;
+    }
+
+    x = x.replace(/(\d)[.,](\d)/g, "$1\u0001$2");   /* protege 12,50 — senão vira 1250 */
+    x = x.replace(new RegExp("[^" + RE_HE + "0-9\u20AA\u0001]", "g"), "");
+    x = x.replace(/\u0001/g, ".");
+    if(!x){ if(fim) passo.push({t:"|", i:i, w:"", d:false}); return; }
+
+    /* prefixo colado em dígito: "ב12" -> número 12, com w guardando o ב */
+    var md = x.match(new RegExp("^([" + PREFIXOS + "]+)(\\d+(?:\\.\\d+)?)$"));
+    if(md) passo.push({t:md[2], i:i, w:x, d:true});
+    else   passo.push({t:x, i:i, w:x, d:/\d/.test(x)});
+
+    if(fim) passo.push({t:"|", i:i, w:"", d:false});
+  });
+
+  var toks = [];
+  var k = 0;
+  while(k < passo.length){
+    var cur = passo[k];
+    if(cur.t === "|"){ toks.push({t:"|", a:cur.i, b:cur.i, w:"", d:false}); k++; continue; }
+
+    /* onze e doze são duas palavras, e podem vir com prefixo colado:
+       "בשתים עשרה" precisa achar "שתים עשרה" */
+    var comp = undefined;   /* var e function-scoped: precisa zerar a cada volta */
+    if(passo[k+1]){
+      formas(cur.t).some(function(f){
+        var chave = f + " " + passo[k+1].t;
+        if(NUM_COMPOSTO[chave] !== undefined){ comp = NUM_COMPOSTO[chave]; return true; }
+        return false;
+      });
+    }
+    if(comp !== undefined){
+      toks.push({t:String(comp), a:cur.i, b:passo[k+1].i, w:cur.w, d:false});
+      k += 2; continue;
+    }
+
+    var base = null;
+    formas(cur.t).some(function(f){ if(NUM_HE[f] !== undefined){ base = f; return true; } return false; });
+    if(base === null){ toks.push({t:cur.t, a:cur.i, b:cur.i, w:cur.w, d:cur.d}); k++; continue; }
+
+    /* "עשרים ושתיים" = 22. O "e" vem colado: ושתיים */
+    var val = NUM_HE[base], a = cur.i, b = cur.i;
+    k++;
+    while(k < passo.length){
+      var p = passo[k];
+      if(p.t === "|" || p.t[0] !== "\u05D5") break;
+      var n2 = NUM_HE[semVav(p.t)];
+      if(n2 === undefined || n2 >= val) break;
+      val += n2; b = p.i; k++;
+    }
+    toks.push({t:String(val), a:a, b:b, w:cur.w, d:false});
+  }
+  return {orig:orig, toks:toks};
+}
+
+/* o trecho da fala do jeito que ela falou — é o que o "Ensinar" mostra */
+function trechoOriginal(orig, toks){
+  var reais = toks.filter(function(t){ return t.t !== "|"; });
+  if(!reais.length) return "";
+  var a = Math.min.apply(null, reais.map(function(t){ return t.a; }));
+  var b = Math.max.apply(null, reais.map(function(t){ return t.b; }));
+  return orig.slice(a, b+1).join(" ").replace(/^[\s,;.]+|[\s,;.]+$/g, "");
+}
+
+/* ---------- distância de edição ---------- */
+function distancia(a, b){
+  var m = a.length, n = b.length;
+  if(!m) return n;
+  if(!n) return m;
+  var ant = new Array(n+1), atual = new Array(n+1), i, j, t;
+  for(j = 0; j <= n; j++) ant[j] = j;
+  for(i = 1; i <= m; i++){
+    atual[0] = i;
+    for(j = 1; j <= n; j++)
+      atual[j] = Math.min(ant[j]+1, atual[j-1]+1, ant[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+    t = ant; ant = atual; atual = t;
+  }
+  return ant[n];
+}
+function parecido(a, b){
+  var m = Math.max(a.length, b.length);
+  return m ? 1 - distancia(a, b)/m : 0;
+}
+/* compara levando em conta os prefixos colados: "בשוק" casa com "שוק" */
+function parecidoHe(janela, termo){
+  var partes = janela.split(" ");
+  var melhor = 0;
+  formas(partes[0]).forEach(function(p){
+    var cand = [p].concat(partes.slice(1)).join(" ");
+    var s = parecido(cand, termo);
+    if(s > melhor) melhor = s;
+  });
+  return melhor;
+}
+
+function normalizarFala(t){ return tokenizar(t).toks.map(function(x){ return x.t; }).join(" "); }
+
+/* palavras vazias que não podem sozinhas casar com nada */
+var BOBA_HE = new RegExp("^(\u05E9\u05DC|\u05E2\u05DD|\u05D0\u05EA|\u05D6\u05D4|\u05D0\u05E0\u05D9|\u05DC\u05D9|\u05DC\u05D0|\u05DB\u05DF|\u05D2\u05DD|\u05E8\u05E7|\u05D9\u05E9|\u05D0\u05D9\u05DF|\u05D0\u05D5|\u05E2\u05D5\u05D3)$");
+
+function termosDe(item){
+  var lista = [item.nome].concat(item.apelidos || []);
+  var vistos = {}, out = [];
+  lista.forEach(function(x){
+    var n = normalizarFala(x);
+    if(n && !vistos[n]){ vistos[n] = 1; out.push(n); }
+  });
+  return out;
+}
+/* termo de 1–2 letras não casa por semelhança, só exato — senão registra no
+   lugar errado, calado, que é o pior erro que este app pode cometer */
+function curto(t){ return t.replace(/\s/g, "").length <= 2; }
+
+function acharNaLista(toks, itens, minSim){
+  var melhor = null;
+  itens.forEach(function(it){
+    termosDe(it).forEach(function(termo){
+      var nt = termo.split(" ").length;
+      for(var i = 0; i < toks.length; i++){
+        for(var n = Math.max(1, nt-1); n <= nt+1 && i+n <= toks.length; n++){
+          var arr = toks.slice(i, i+n);
+          if(arr.some(function(x){ return x.t === "|"; })) continue;
+          var janela = arr.map(function(x){ return x.t; }).join(" ");
+          if(!janela) continue;
+          if(BOBA_HE.test(janela) && janela !== termo) continue;
+          var s = curto(termo) ? (janela === termo ? 1 : 0) : parecidoHe(janela, termo);
+          if(s >= minSim && (!melhor || s > melhor.s + 0.001 ||
+             (Math.abs(s - melhor.s) <= 0.001 && termo.length > melhor.termo.length)))
+            melhor = {s:s, item:it, termo:termo, i:i, n:n};
+        }
+      }
+    });
+  });
+  return melhor;
+}
+
+function melhorJanela(toks, item){
+  var termos = termosDe(item), melhor = null;
+  termos.forEach(function(termo){
+    var nt = termo.split(" ").length;
+    for(var i = 0; i < toks.length; i++){
+      for(var n = Math.max(1, nt-1); n <= nt+1 && i+n <= toks.length; n++){
+        var arr = toks.slice(i, i+n);
+        if(arr.some(function(x){ return x.t === "|"; })) continue;
+        var j = arr.map(function(x){ return x.t; }).join(" ");
+        if(j.length < 2 || BOBA_HE.test(j)) continue;
+        var s = parecidoHe(j, termo);
+        if(!melhor || s > melhor.s) melhor = {s:s, janela:j, i:i, n:n};
+      }
+    }
+  });
+  return melhor;
+}
+
+/* ==========================================================================
+   DATA E HORA — a parte que ganha ou perde o app.
+   A tabela em português do documento de partida não serve aqui: foi
+   reescrita do zero em hebraico.
+   ========================================================================== */
+
+function p2(n){ return String(n).padStart(2, "0"); }
+function isoDe(d){ return d.getFullYear() + "-" + p2(d.getMonth()+1) + "-" + p2(d.getDate()); }
+function somarDias(iso, n){
+  var p = iso.split("-").map(Number);
+  var d = new Date(p[0], p[1]-1, p[2]);
+  d.setDate(d.getDate() + n);
+  return isoDe(d);
+}
+function diaSemana(iso){
+  var p = iso.split("-").map(Number);
+  return new Date(p[0], p[1]-1, p[2]).getDay();      /* 0 = domingo */
+}
+
+/* A semana começa no DOMINGO. Calendário israelense, não brasileiro. */
+var DIAS_HE = [
+  {n:0, t:"\u05E8\u05D0\u05E9\u05D5\u05DF"},                     /* ראשון */
+  {n:1, t:"\u05E9\u05E0\u05D9"},                                 /* שני */
+  {n:2, t:"\u05E9\u05DC\u05D9\u05E9\u05D9"},                     /* שלישי */
+  {n:3, t:"\u05E8\u05D1\u05D9\u05E2\u05D9"},                     /* רביעי */
+  {n:4, t:"\u05D7\u05DE\u05D9\u05E9\u05D9"},                     /* חמישי */
+  {n:5, t:"\u05E9\u05D9\u05E9\u05D9"},                           /* שישי */
+  {n:6, t:"\u05E9\u05D1\u05EA"}                                  /* שבת */
+];
+var MESES_HE = ["\u05D9\u05E0\u05D5\u05D0\u05E8","\u05E4\u05D1\u05E8\u05D5\u05D0\u05E8",
+  "\u05DE\u05E8\u05E5","\u05D0\u05E4\u05E8\u05D9\u05DC","\u05DE\u05D0\u05D9",
+  "\u05D9\u05D5\u05E0\u05D9","\u05D9\u05D5\u05DC\u05D9","\u05D0\u05D5\u05D2\u05D5\u05E1\u05D8",
+  "\u05E1\u05E4\u05D8\u05DE\u05D1\u05E8","\u05D0\u05D5\u05E7\u05D8\u05D5\u05D1\u05E8",
+  "\u05E0\u05D5\u05D1\u05DE\u05D1\u05E8","\u05D3\u05E6\u05DE\u05D1\u05E8"];
+
+var T = {
+  hoje:"\u05D4\u05D9\u05D5\u05DD",                    /* היום */
+  amanha:"\u05DE\u05D7\u05E8",                        /* מחר */
+  depoisAmanha:"\u05DE\u05D7\u05E8\u05EA\u05D9\u05D9\u05DD",
+  ontem:"\u05D0\u05EA\u05DE\u05D5\u05DC",
+  anteontem:"\u05E9\u05DC\u05E9\u05D5\u05DD",
+  dia:"\u05D9\u05D5\u05DD",
+  proximo:"\u05D4\u05D1\u05D0", proxima:"\u05D4\u05D1\u05D0\u05D4",
+  passado:"\u05E9\u05E2\u05D1\u05E8", passada:"\u05E9\u05E2\u05D1\u05E8\u05D4",
+  emMais:"\u05D1\u05E2\u05D5\u05D3",                  /* בעוד */
+  cada:"\u05DB\u05DC",                                /* כל */
+  semana:"\u05E9\u05D1\u05D5\u05E2", semanas:"\u05E9\u05D1\u05D5\u05E2\u05D5\u05EA",
+  duasSemanas:"\u05E9\u05D1\u05D5\u05E2\u05D9\u05D9\u05DD",
+  dias:"\u05D9\u05DE\u05D9\u05DD", doisDias:"\u05D9\u05D5\u05DE\u05D9\u05D9\u05DD",
+  mes:"\u05D7\u05D5\u05D3\u05E9", doisMeses:"\u05D7\u05D5\u05D3\u05E9\u05D9\u05D9\u05DD",
+  hora:"\u05E9\u05E2\u05D4",                          /* שעה */
+  manha:"\u05D1\u05D5\u05E7\u05E8", meioDia:"\u05E6\u05D4\u05E8\u05D9\u05D9\u05DD",
+  tarde:"\u05D0\u05D7\u05E8", noite:"\u05E2\u05E8\u05D1", madrugada:"\u05DC\u05D9\u05DC\u05D4"
+};
+
+DIAS_HE = DIAS_HE.map(function(d){ return {n:d.n, t:normHe(d.t)}; });
+MESES_HE = normLista(MESES_HE);
+Object.keys(T).forEach(function(k){ T[k] = normHe(T[k]); });
+
+var PARTES = [
+  {t:T.manha,     h:9,  forca:"am"},
+  {t:T.meioDia,   h:12, forca:"m"},
+  {t:T.noite,     h:20, forca:"pm"},
+  {t:T.madrugada, h:21, forca:"noite"}   /* "12 בלילה" é meia-noite, não meio-dia */
+];
+
+/* Regra de ambiguidade — o documento manda escolher UMA, escrever na tela e
+   não mudar: "יום שלישי" é sempre a PRÓXIMA ocorrência futura, hoje incluído.
+   Com "הבא", pula o hoje. */
+function proximoDiaSemana(hojeIso, alvo, estrito){
+  var atual = diaSemana(hojeIso);
+  var d = (alvo - atual + 7) % 7;
+  if(d === 0 && estrito) d = 7;
+  return somarDias(hojeIso, d);
+}
+
+function acharDataHora(toks, hojeIso){
+  var r = {data:null, hora:null, repete:null, diaRepete:null, usados:{}, incerto:false};
+  var tt = toks.map(function(x){ return x.t; });
+  function marcar(i, n){ for(var k = i; k < i + (n || 1); k++) r.usados[k] = 1; }
+  function bate(i, palavra){ return i >= 0 && i < tt.length && formas(tt[i]).indexOf(palavra) >= 0; }
+  function ehNum(i){ return i >= 0 && i < tt.length && /^\d+(\.\d+)?$/.test(tt[i]); }
+  function ehHoraEscrita(i){ return i >= 0 && i < tt.length && /^@\d{1,2}:\d{2}$/.test(tt[i]); }
+  var i, k;
+
+  /* ---- repetição: כל יום שלישי / כל יום ---- */
+  for(i = 0; i < tt.length; i++){
+    if(!bate(i, T.cada)) continue;
+    var salto = bate(i+1, T.dia) ? 1 : 0;
+    var dr = null;
+    DIAS_HE.forEach(function(x){ if(bate(i+1+salto, x.t)) dr = x; });
+    if(dr){
+      r.repete = "semanal"; r.diaRepete = dr.n;
+      r.data = proximoDiaSemana(hojeIso, dr.n, false);
+      marcar(i, 2 + salto); break;
+    }
+    if(salto){ r.repete = "diario"; r.data = hojeIso; marcar(i, 2); break; }
+  }
+
+  /* ---- dias relativos ---- */
+  if(!r.data) for(i = 0; i < tt.length; i++){
+    if(bate(i, T.hoje)){ r.data = hojeIso; marcar(i); break; }
+    if(bate(i, T.depoisAmanha)){ r.data = somarDias(hojeIso, 2); marcar(i); break; }
+    if(bate(i, T.amanha)){ r.data = somarDias(hojeIso, 1); marcar(i); break; }
+    if(bate(i, T.anteontem)){ r.data = somarDias(hojeIso, -2); marcar(i); break; }
+    if(bate(i, T.ontem)){ r.data = somarDias(hojeIso, -1); marcar(i); break; }
+  }
+
+  /* ---- בעוד X : daqui a ---- */
+  if(!r.data) for(i = 0; i < tt.length; i++){
+    if(!bate(i, T.emMais)) continue;
+    if(bate(i+1, T.duasSemanas)){ r.data = somarDias(hojeIso, 14); marcar(i,2); break; }
+    if(bate(i+1, T.semana))     { r.data = somarDias(hojeIso, 7);  marcar(i,2); break; }
+    if(bate(i+1, T.doisDias))   { r.data = somarDias(hojeIso, 2);  marcar(i,2); break; }
+    if(bate(i+1, T.doisMeses))  { r.data = somarDias(hojeIso, 60); marcar(i,2); break; }
+    if(bate(i+1, T.mes))        { r.data = somarDias(hojeIso, 30); marcar(i,2); break; }
+    if(ehNum(i+1)){
+      var n1 = parseInt(tt[i+1], 10);
+      if(bate(i+2, T.dias))   { r.data = somarDias(hojeIso, n1);   marcar(i,3); break; }
+      if(bate(i+2, T.semanas) || bate(i+2, T.semana)){
+                                r.data = somarDias(hojeIso, n1*7); marcar(i,3); break; }
+    }
+  }
+
+  /* ---- dia da semana nomeado ---- */
+  if(!r.data) for(i = 0; i < tt.length; i++){
+    var sal = bate(i, T.dia) ? 1 : 0;
+    var d = null;
+    DIAS_HE.forEach(function(x){ if(bate(i+sal, x.t)) d = x; });
+    if(!d) continue;
+    var estrito = bate(i+sal+1, T.proximo) || bate(i+sal+1, T.proxima);
+    var passada = bate(i+sal+1, T.passado) || bate(i+sal+1, T.passada);
+    if(passada){
+      var atual = diaSemana(hojeIso);
+      var dd = (atual - d.n + 7) % 7; if(dd === 0) dd = 7;
+      r.data = somarDias(hojeIso, -dd);
+    } else {
+      r.data = proximoDiaSemana(hojeIso, d.n, estrito);
+    }
+    marcar(i, sal + 1 + ((estrito || passada) ? 1 : 0));
+    break;
+  }
+
+  /* ---- dia do mês: "3 בספטמבר" ---- */
+  if(!r.data) for(i = 0; i < tt.length; i++){
+    if(!ehNum(i)) continue;
+    var nd = parseInt(tt[i], 10);
+    if(nd < 1 || nd > 31) continue;
+    var mi = -1;
+    MESES_HE.forEach(function(m, ix){ if(bate(i+1, m)) mi = ix; });
+    if(mi < 0) continue;
+    var hp = hojeIso.split("-").map(Number);
+    var ano = hp[0];
+    if(mi + 1 < hp[1]) ano++;
+    r.data = ano + "-" + p2(mi+1) + "-" + p2(nd);
+    marcar(i, 2);
+    break;
+  }
+
+  /* ---- hora ---- */
+  var achou = null;
+  for(i = 0; i < tt.length && !achou; i++){
+    if(r.usados[i]) continue;
+
+    /* hora escrita: 14:30 */
+    if(ehHoraEscrita(i)){
+      var pp = tt[i].slice(1).split(":");
+      achou = {h:parseInt(pp[0],10), m:parseInt(pp[1],10), cru:true};
+      marcar(i); break;
+    }
+
+    /* רבע לארבע = quinze pra quatro. Precisa do ל colado no número,
+       senão "שלוש ורבע" (3:15) e "רבע לשלוש" (2:45) viram a mesma coisa. */
+    if(formas(tt[i]).indexOf(QUARTO) >= 0 && ehNum(i+1) && /^\u05DC/.test(toks[i+1].w || "")){
+      var hq = parseInt(tt[i+1], 10);
+      if(hq >= 0 && hq <= 24){ marcar(i, 2); achou = {h:(hq + 23) % 24, m:45}; break; }
+    }
+
+    if(!ehNum(i)) continue;
+    var nh = parseFloat(tt[i]);
+    if(nh !== Math.floor(nh) || nh < 0 || nh > 24) continue;
+
+    /* Precisa de SINAL de que aquilo é hora: prefixo ב, a palavra שעה,
+       "וחצי"/"ורבע" logo depois, ou uma parte do dia por perto.
+       Número solto NÃO vira hora — senão "124 שקל" viraria uma hora. */
+    var temB    = /^\u05D1/.test(toks[i].w || "");
+    var temShaa = bate(i-1, T.hora) || bate(i+1, T.hora);
+    var meia    = i+1 < tt.length && formas(semVav(tt[i+1])).indexOf(MEIO) >= 0;
+    var quar    = i+1 < tt.length && formas(semVav(tt[i+1])).indexOf(QUARTO) >= 0;
+    var parteProx = false;
+    PARTES.forEach(function(p){ if(bate(i+1, p.t) || bate(i+2, p.t)) parteProx = true; });
+    if(bate(i+1, T.tarde) || bate(i+2, T.tarde)) parteProx = true;
+    if(!(temB || temShaa || meia || quar || parteProx)) continue;
+
+    var mm = 0, usa = 1;
+    if(meia){ mm = 30; usa = 2; }
+    else if(quar){ mm = 15; usa = 2; }
+    /* de propósito NÃO juntamos "שלוש עשרים" como 3:20. Dois números
+       seguidos são ambíguos demais, e errar a hora calado é pior que
+       deixar o "20" sobrar no assunto, onde ela vê e corrige. */
+    marcar(i, usa);
+    achou = {h:nh, m:mm, digito:!!toks[i].d};
+    break;
+  }
+
+  /* parte do dia: força manhã ou tarde e, sozinha, já define a hora */
+  var forca = null;
+  for(i = 0; i < tt.length; i++){
+    if(bate(i, T.tarde) && bate(i+1, T.meioDia)){       /* אחר הצהריים */
+      forca = "pm"; if(!achou) r.hora = "15:00"; marcar(i, 2); break;
+    }
+    var pd = null;
+    PARTES.forEach(function(x){ if(bate(i, x.t)) pd = x; });
+    if(pd){ forca = pd.forca; if(!achou) r.hora = p2(pd.h) + ":00"; marcar(i); break; }
+  }
+
+  if(achou){
+    var hh = achou.h;
+    if(achou.cru){ /* 14:30 é literal, ninguém mexe */ }
+    else if(forca === "am"){ if(hh === 12) hh = 0; else if(hh > 12) hh -= 12; }
+    else if(forca === "noite"){ hh = (hh === 12) ? 0 : (hh < 12 ? hh + 12 : hh); }
+    else if(forca === "pm"){ if(hh < 12) hh += 12; }
+    else if(forca === "m"){ hh = (hh === 12) ? 12 : (hh < 12 ? hh + 12 : hh); }
+    else if(hh >= 1 && hh <= 7){
+      /* sem marcador: 1..7 é tarde, 8..12 é manhã. É a mesma regra do
+         documento ("às três" = 15:00). Fica escrita na tela do app. */
+      hh += 12;
+    }
+    r.hora = p2(hh % 24) + ":" + p2(achou.m);
+
+    /* ela deu hora mas nenhuma data: é hoje, mas com dúvida — a tela de
+       confirmação pergunta com botões em vez de chutar */
+    if(!r.data){ r.data = hojeIso; r.incerto = true; }
+  }
+
+  return r;
+}
+
+/* ==========================================================================
+   DINHEIRO
+   ========================================================================== */
+
+var V_SAIU = ["\u05D4\u05D5\u05E6\u05D0\u05EA\u05D9","\u05E9\u05D9\u05DC\u05DE\u05EA\u05D9",
+  "\u05E7\u05E0\u05D9\u05EA\u05D9","\u05D4\u05D5\u05E6\u05D0\u05D4","\u05E9\u05D9\u05DC\u05DE\u05E0\u05D5",
+  "\u05E2\u05DC\u05D4","\u05D9\u05E6\u05D0"];
+var V_ENTROU = ["\u05E7\u05D9\u05D1\u05DC\u05EA\u05D9","\u05D4\u05E8\u05D5\u05D5\u05D7\u05EA\u05D9",
+  "\u05E0\u05DB\u05E0\u05E1","\u05E7\u05D9\u05D1\u05DC\u05E0\u05D5","\u05D4\u05DB\u05E0\u05E1\u05D4",
+  "\u05E9\u05D9\u05DC\u05DE\u05D5"];
+var MOEDA = ["\u05E9\u05E7\u05DC","\u05E9\u05E7\u05DC\u05D9\u05DD","\u05E9\u05D7","\u20AA"];
+
+V_SAIU = normLista(V_SAIU); V_ENTROU = normLista(V_ENTROU); MOEDA = normLista(MOEDA);
+
+function acharDinheiro(toks){
+  var tt = toks.map(function(x){ return x.t; });
+  function bate(i, p){ return i >= 0 && i < tt.length && formas(tt[i]).indexOf(p) >= 0; }
+  var usados = {}, direcao = null, i;
+
+  for(i = 0; i < tt.length; i++){
+    var s = false, e = false;
+    V_SAIU.forEach(function(v){ if(bate(i, v)) s = true; });
+    V_ENTROU.forEach(function(v){ if(bate(i, v)) e = true; });
+    if(s){ direcao = "saiu";   usados[i] = 1; break; }
+    if(e){ direcao = "entrou"; usados[i] = 1; break; }
+  }
+
+  /* valor: o número colado na palavra da moeda. Se ela não disser a moeda,
+     o primeiro número solto. */
+  var valor = null, iVal = -1, temMoeda = false;
+  for(i = 0; i < tt.length; i++){
+    if(!/^\d+(\.\d+)?$/.test(tt[i])) continue;
+    var perto = false, depois = false;
+    MOEDA.forEach(function(m){
+      if(bate(i+1, m)){ perto = true; depois = true; }
+      if(bate(i-1, m)) perto = true;
+    });
+    if(tt[i].indexOf("\u20AA") >= 0 || /\u20AA/.test(toks[i].w || "")) perto = true;
+    if(perto){
+      valor = parseFloat(tt[i]); iVal = i; temMoeda = true;
+      usados[i] = 1; if(depois) usados[i+1] = 1;
+      break;
+    }
+  }
+  if(valor === null){
+    for(i = 0; i < tt.length; i++){
+      if(/^\d+(\.\d+)?$/.test(tt[i])){ valor = parseFloat(tt[i]); iVal = i; usados[i] = 1; break; }
+    }
+  }
+  return {direcao:direcao, valor:valor, iVal:iVal, usados:usados, temMoeda:temMoeda};
+}
+
+/* ==========================================================================
+   COMPRAS — "תקני חלב, לחם וביצים" são TRÊS itens, não uma anotação.
+   Aqui, e só aqui, o vocabulário fechado do app de irrigação volta inteiro.
+   ========================================================================== */
+
+var GATILHO_COMPRA = ["\u05EA\u05E7\u05E0\u05D9","\u05DC\u05E7\u05E0\u05D5\u05EA",
+  "\u05E7\u05E0\u05D9\u05D5\u05EA","\u05E8\u05E9\u05D9\u05DE\u05D4",
+  "\u05EA\u05D5\u05E1\u05D9\u05E4\u05D9","\u05E6\u05E8\u05D9\u05DB\u05D4",
+  "\u05E6\u05E8\u05D9\u05DA","\u05D7\u05E1\u05E8"];
+var UNIDADES = ["\u05E7\u05D9\u05DC\u05D5","\u05E7\u05D2","\u05D2\u05E8\u05DD",
+  "\u05DC\u05D9\u05D8\u05E8","\u05DE\u05DC","\u05D7\u05D1\u05D9\u05DC\u05D4",
+  "\u05D7\u05D1\u05D9\u05DC\u05D5\u05EA","\u05D1\u05E7\u05D1\u05D5\u05E7",
+  "\u05D1\u05E7\u05D1\u05D5\u05E7\u05D9\u05DD","\u05E7\u05D5\u05E4\u05E1\u05D4",
+  "\u05E7\u05D5\u05E4\u05E1\u05D0\u05D5\u05EA","\u05D9\u05D7\u05D9\u05D3\u05D5\u05EA",
+  "\u05E9\u05E7\u05D9\u05EA"];
+
+GATILHO_COMPRA = normLista(GATILHO_COMPRA); UNIDADES = normLista(UNIDADES);
+
+/* primeiro corte: por vírgula e pelo "ו" colado */
+function partirCompras(toks, iInicio){
+  var partes = [], atual = [];
+  for(var i = iInicio; i < toks.length; i++){
+    var t = toks[i];
+    if(t.t === "|"){ if(atual.length){ partes.push(atual); atual = []; } continue; }
+    if(t.t.length >= 3 && t.t[0] === "\u05D5" && atual.length && NUM_HE[semVav(t.t)] === undefined){
+      partes.push(atual);
+      atual = [{t:semVav(t.t), a:t.a, b:t.b, w:t.w, d:t.d}];
+      continue;
+    }
+    atual.push(t);
+  }
+  if(atual.length) partes.push(atual);
+  return partes;
+}
+
+/* segundo corte: dentro de um pedaço, se houver DOIS itens conhecidos, parte
+   neles. É isto que salva "חלב לחם וביצים", falado sem vírgula nenhuma. */
+function cortarPorConhecidos(parte, conhecidos){
+  if(!conhecidos || !conhecidos.length || parte.length < 2) return [parte];
+  var marcas = [];
+  for(var i = 0; i < parte.length; i++){
+    var m = acharNaLista(parte.slice(i, i+1), conhecidos, 0.8);
+    if(m) marcas.push(i);
+  }
+  if(marcas.length < 2) return [parte];
+  var out = [], ini = 0;
+  for(var k = 1; k < marcas.length; k++){
+    out.push(parte.slice(ini, marcas[k]));
+    ini = marcas[k];
+  }
+  out.push(parte.slice(ini));
+  return out.filter(function(p){ return p.length; });
+}
+
+/* "שני" (dois) é a MESMA palavra que "segunda-feira" (יום שני). Por isso ela
+   NÃO entra no mapa geral de números — senão "ביום שני" viraria "no dia 2" e
+   o compromisso cairia na data errada, calado. Aqui, dentro da lista de
+   compras, o contexto já resolve a ambiguidade: vale como quantidade. */
+var QTD_COMPRA = normChaves({"\u05E9\u05E0\u05D9":2});
+
+function lerItemCompra(parte, orig){
+  var tt = parte.map(function(x){ return x.t; });
+  var qtd = null, unidade = null, corte = 0;
+
+  if(/^\d+(\.\d+)?$/.test(tt[0] || "")){ qtd = parseFloat(tt[0]); corte = 1; }
+  else if(QTD_COMPRA[tt[0]] !== undefined){ qtd = QTD_COMPRA[tt[0]]; corte = 1; }
+  else if(formas(tt[0] || "").indexOf(MEIO) >= 0 &&
+          UNIDADES.some(function(u){ return formas(tt[1] || "").indexOf(u) >= 0; })){
+    qtd = 0.5; corte = 1;
+  }
+  if(corte && UNIDADES.some(function(u){ return formas(tt[corte] || "").indexOf(u) >= 0; })){
+    unidade = tt[corte]; corte++;
+  }
+  var resto = parte.slice(corte);
+  if(!resto.length) return null;
+  var nome = trechoOriginal(orig, resto).replace(/^\u05D5/, "").trim();
+  if(!nome) return null;
+  return {item:nome, qtd:qtd, unidade:unidade};
+}
+
+function lerCompras(toks, orig, iInicio, conhecidos){
+  var brutas = partirCompras(toks, iInicio);
+  var partes = [];
+  brutas.forEach(function(p){
+    cortarPorConhecidos(p, conhecidos).forEach(function(q){ partes.push(q); });
+  });
+  return partes.map(function(p){ return lerItemCompra(p, orig); }).filter(Boolean);
+}
+
+/* ==========================================================================
+   O ROTEADOR — em que grupo aquilo vai
+   ========================================================================== */
+
+var GATILHO_SONHO = ["\u05D7\u05DC\u05DE\u05EA\u05D9","\u05D7\u05DC\u05D5\u05DD","\u05D7\u05DC\u05D5\u05DE\u05D5\u05EA"];
+var GATILHO_IDEIA = ["\u05E8\u05E2\u05D9\u05D5\u05DF","\u05E8\u05E2\u05D9\u05D5\u05E0\u05D5\u05EA"];
+
+GATILHO_SONHO = normLista(GATILHO_SONHO); GATILHO_IDEIA = normLista(GATILHO_IDEIA);
+
+/* ctx = {hoje, agora, grupos, lugares, itensCompra} */
+function interpretar(fala, ctx){
+  ctx = ctx || {};
+  var hoje = ctx.hoje || isoDe(new Date());
+  var agora = ctx.agora || "12:00";
+  var grupos = ctx.grupos || [];
+  function porChave(c){
+    var g = null;
+    grupos.forEach(function(x){ if(!g && x.chave === c) g = x; });
+    return g;
+  }
+  function porComp(c){
+    var g = null;
+    grupos.forEach(function(x){ if(!g && x.comportamento === c) g = x; });
+    return g;
+  }
+
+  var tk = tokenizar(fala);
+  var toks = tk.toks, orig = tk.orig;
+  var tt = toks.map(function(x){ return x.t; });
+  function bate(i, p){ return i >= 0 && i < tt.length && formas(tt[i]).indexOf(p) >= 0; }
+  function temAlgum(lista){
+    for(var i = 0; i < tt.length; i++)
+      for(var j = 0; j < lista.length; j++)
+        if(bate(i, lista[j])) return true;
+    return false;
+  }
+  var textoLimpo = trechoOriginal(orig, toks);
+
+  /* 1. compras — antes de tudo, porque uma frase vira VÁRIOS registros */
+  var iCompra = -1;
+  for(var i = 0; i < tt.length && iCompra < 0; i++){
+    for(var j = 0; j < GATILHO_COMPRA.length; j++)
+      if(bate(i, GATILHO_COMPRA[j])){ iCompra = i; break; }
+  }
+  var gCompras = porChave("compras") || porComp("lista");
+  if(iCompra >= 0 && gCompras){
+    /* "צריך לקנות" são dois gatilhos seguidos — pula todos, senão o
+       segundo verbo entra no nome do primeiro item */
+    var ini = iCompra + 1;
+    while(ini < tt.length && GATILHO_COMPRA.some(function(g){ return bate(ini, g); })) ini++;
+    var itens = lerCompras(toks, orig, ini, ctx.itensCompra || []);
+    if(itens.length){
+      return itens.map(function(x){
+        return {tipo:"compra", grupoId:gCompras.id, item:x.item, qtd:x.qtd,
+                unidade:x.unidade, comprado:false, fala:fala};
+      });
+    }
+  }
+
+  /* 2. dinheiro — antes da data, porque "הוצאתי 124 שקל אתמול" tem as duas */
+  var din = acharDinheiro(toks);
+  var gDin = porChave("dinheiro") || porComp("financeiro");
+  if(gDin && din.valor !== null && (din.direcao || din.temMoeda)){
+    var dhd = acharDataHora(toks, hoje);
+    var sobra = toks.filter(function(t, ix){
+      return t.t !== "|" && !din.usados[ix] && !dhd.usados[ix];
+    });
+    var onde = trechoOriginal(orig, sobra).trim();
+    return [{
+      tipo:"gasto", grupoId:gDin.id, valor:din.valor,
+      direcao:din.direcao,                       /* null = perguntar com botões */
+      onde:onde || null, data:dhd.data || hoje,
+      fala:fala, texto:textoLimpo
+    }];
+  }
+
+  /* 3. sonho */
+  var gSonho = porChave("sonhos");
+  if(gSonho && temAlgum(GATILHO_SONHO)){
+    /* A data é a NOITE, não o momento: falou às 6h de terça, é o sonho da
+       noite de segunda pra terça. Sem isso o histórico fica torto. */
+    var hAgora = parseInt(String(agora).slice(0, 2), 10);
+    var dataNoite = (hAgora < 11) ? somarDias(hoje, -1) : hoje;
+    return [{tipo:"nota", grupoId:gSonho.id, texto:textoLimpo,
+             data:dataNoite, noite:true, fala:fala}];
+  }
+
+  /* 4. ideia */
+  var gIdeia = porChave("ideias");
+  if(gIdeia && temAlgum(GATILHO_IDEIA)){
+    return [{tipo:"nota", grupoId:gIdeia.id, texto:textoLimpo, data:hoje, fala:fala}];
+  }
+
+  /* 5. compromisso — quando há data ou hora */
+  var dh = acharDataHora(toks, hoje);
+  var gAgenda = porChave("agenda") || porComp("agenda");
+  if(gAgenda && (dh.data || dh.hora)){
+    var sobra2 = toks.filter(function(t, ix){ return t.t !== "|" && !dh.usados[ix]; });
+    var assunto = trechoOriginal(orig, sobra2).trim();
+    return [{
+      tipo:"compromisso", grupoId:gAgenda.id,
+      texto:assunto || textoLimpo,
+      data:dh.data, hora:dh.hora, repete:dh.repete, diaRepete:dh.diaRepete,
+      incerto:dh.incerto, fala:fala
+    }];
+  }
+
+  /* 6. não sei — o app mostra os grupos em botões grandes e aprende no toque */
+  return [{tipo:"indefinido", grupoId:null, texto:textoLimpo, data:hoje, fala:fala}];
+}
+</script>
+
+<script>
+"use strict";
+/* ==========================================================================
+   MAIA — app de vida diária. Arquivo único, IndexedDB, PWA.
+   Interface inteira em hebraico, da direita pra esquerda.
+   ========================================================================== */
+
+var $ = function(s){ return document.querySelector(s); };
+function el(tag, cls, html){
+  var e = document.createElement(tag || "div");
+  if(cls) e.className = cls;
+  if(html != null) e.innerHTML = html;
+  return e;
+}
+function esc(s){
+  return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+  });
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function todayISO(){ return isoDe(new Date()); }
+function nowHM(){ var d = new Date(); return p2(d.getHours()) + ":" + p2(d.getMinutes()); }
+function toast(m){
+  var t = $("#toast"); t.firstChild.textContent = m; t.classList.add("on");
+  clearTimeout(t._x); t._x = setTimeout(function(){ t.classList.remove("on"); }, 3200);
+}
+function fmtNum(n){
+  if(n == null) return "";
+  var s = (Math.round(n * 100) / 100).toString();
+  return s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+function shekel(n){
+  var neg = (n || 0) < 0;
+  return (neg ? "-" : "") + "₪" + fmtNum(Math.abs(n || 0));
+}
+
+/* ---------- datas em hebraico ---------- */
+var DIA_NOME = ["ראשון","שני","שלישי",
+  "רביעי","חמישי","שישי","שבת"];
+var MES_NOME = ["ינואר","פברואר","מרץ",
+  "אפריל","מאי","יוני","יולי",
+  "אוגוסט","ספטמבר","אוקטובר",
+  "נובמבר","דצמבר"];
+var L = {
+  hoje:"היום", amanha:"מחר",
+  ontem:"אתמול", semana:"שבוע",
+  yomA:"יום ", ליל:"ליל "
+};
+/* data por extenso, sem os apelidos — o cabeçalho não pode dizer "היום/היום" */
+function fmtDataLonga(iso){
+  var p = iso.split("-").map(Number);
+  return DIA_NOME[diaSemana(iso)] + ", " + p[2] + " ב" + MES_NOME[p[1]-1];
+}
+function fmtDia(iso){
+  if(iso === todayISO()) return L.hoje;
+  if(iso === somarDias(todayISO(), 1)) return L.amanha;
+  if(iso === somarDias(todayISO(), -1)) return L.ontem;
+  var p = iso.split("-").map(Number);
+  return DIA_NOME[diaSemana(iso)] + ", " + p[2] + " ב" + MES_NOME[p[1]-1];
+}
+function fmtDiaCurto(iso){
+  var p = iso.split("-").map(Number);
+  return p[2] + "/" + p[1];
+}
+/* "a noite de sexta pra sábado" — como sonho se conta */
+function fmtNoite(iso){
+  var prox = somarDias(iso, 1);
+  return "ליל " + DIA_NOME[diaSemana(iso)] + " ל" + DIA_NOME[diaSemana(prox)];
+}
+function minutosAte(iso, hora){
+  if(!hora) return null;
+  var p = iso.split("-").map(Number), h = hora.split(":").map(Number);
+  return Math.round((new Date(p[0], p[1]-1, p[2], h[0], h[1]) - new Date()) / 60000);
+}
+function fmtDaqui(min){
+  if(min < 0) return "עכשיו";                       /* agora */
+  if(min < 60) return "בעוד " + min + " דקות";
+  var h = Math.floor(min / 60);
+  if(h < 24) return "בעוד " + h + (h === 1 ? " שעה" : " שעות");
+  return null;
+}
+
+/* ==========================================================================
+   BANCO
+   ========================================================================== */
+var DB_NOME = "maya", DB_VER = 1, _db = null;
+var LOJAS = ["config","grupos","notas","lugares","itens"];
+var S = {config:{id:"app"}, grupos:[], notas:[], lugares:[], itens:[]};
+
+function abrirDB(){
+  return new Promise(function(ok, err){
+    var r = indexedDB.open(DB_NOME, DB_VER);
+    r.onupgradeneeded = function(e){
+      var db = e.target.result;
+      LOJAS.forEach(function(n){ if(!db.objectStoreNames.contains(n)) db.createObjectStore(n, {keyPath:"id"}); });
+    };
+    r.onsuccess = function(){ _db = r.result; ok(); };
+    r.onerror = function(e){ err(e.target.error); };
+  });
+}
+function tx(store, modo){ return _db.transaction(store, modo).objectStore(store); }
+function put(store, obj){
+  obj.atualizadoEm = new Date().toISOString();
+  return new Promise(function(ok, err){
+    var r = tx(store, "readwrite").put(obj);
+    r.onsuccess = function(){ ok(obj); }; r.onerror = function(e){ err(e.target.error); };
+  });
+}
+function del(store, id){
+  return new Promise(function(ok, err){
+    var r = tx(store, "readwrite").delete(id);
+    r.onsuccess = function(){ ok(); }; r.onerror = function(e){ err(e.target.error); };
+  });
+}
+function todos(store){
+  return new Promise(function(ok, err){
+    var r = tx(store, "readonly").getAll();
+    r.onsuccess = function(){ ok(r.result || []); }; r.onerror = function(e){ err(e.target.error); };
+  });
+}
+async function salvarCfg(patch){
+  S.config = Object.assign({id:"app"}, S.config, patch);
+  await put("config", S.config);
+}
+
+/* ==========================================================================
+   VOCABULÁRIO SEMEADO
+   Identificadores derivados do NOME, nunca sorteados: quando a sincronia
+   entrar, os dois aparelhos criam o MESMO item em vez de dois.
+   ========================================================================== */
+function slug(nome){ return normHe(nome).replace(/\s+/g, "-"); }
+
+var GRUPOS_SEMENTE = [
+  {chave:"agenda",   nome:"יומן",              comportamento:"agenda",     ordem:1,
+   apelidos:["פגישה","תור","אירוע"]},
+  {chave:"sonhos",   nome:"חלומות",  comportamento:"texto",      ordem:2,
+   apelidos:["חלום","חלמתי"]},
+  {chave:"ideias",   nome:"רעיונות", comportamento:"texto", ordem:3,
+   apelidos:["רעיון","מחשבה"]},
+  {chave:"dinheiro", nome:"כספים",        comportamento:"financeiro", ordem:4,
+   apelidos:["כסף","הוצאה","הכנסה"]},
+  {chave:"compras",  nome:"קניות",        comportamento:"lista",      ordem:5,
+   apelidos:["רשימה","סופר"]}
+];
+
+/* lugares e pessoas do financeiro — ela vai ensinar o resto com o uso */
+var LUGARES_SEMENTE = ["שוק","סופר","בית מרקחת",
+  "דלק","מסעדה","בית קפה","אוטובוס"];
+
+/* Só aqui o vocabulário fechado vale inteiro. Estes são o ponto de partida;
+   tudo que ela comprar entra na lista sozinho e melhora o reconhecimento. */
+var ITENS_SEMENTE = ["חלב","לחם","ביצים","גבינה",
+  "יוגורט","חמאה","עגבניות",
+  "מלפפונים","בצל","תפוחי אדמה",
+  "בננות","תפוחים","לימון",
+  "קפה","תה","סוכר","אורז","פסטה",
+  "שמן","מלח","נייר טואלט",
+  "סבון","עוף","דג","שוקולד"];
+
+async function semear(){
+  if(!S.grupos.length){
+    for(var i = 0; i < GRUPOS_SEMENTE.length; i++){
+      var g = Object.assign({id:"grupo-" + GRUPOS_SEMENTE[i].chave}, GRUPOS_SEMENTE[i]);
+      await put("grupos", g); S.grupos.push(g);
+    }
+  }
+  if(!S.lugares.length){
+    for(var j = 0; j < LUGARES_SEMENTE.length; j++){
+      var lu = {id:"lugar-" + slug(LUGARES_SEMENTE[j]), nome:LUGARES_SEMENTE[j], apelidos:[]};
+      await put("lugares", lu); S.lugares.push(lu);
+    }
+  }
+  if(!S.itens.length){
+    for(var k = 0; k < ITENS_SEMENTE.length; k++){
+      var it = {id:"item-" + slug(ITENS_SEMENTE[k]), nome:ITENS_SEMENTE[k], apelidos:[], usos:0};
+      await put("itens", it); S.itens.push(it);
+    }
+  }
+}
+
+function grupoPor(id){ var g = null; S.grupos.forEach(function(x){ if(x.id === id) g = x; }); return g; }
+function grupoChave(c){ var g = null; S.grupos.forEach(function(x){ if(x.chave === c) g = x; }); return g; }
+
+/* ==========================================================================
+   VOZ
+   As lições do app de irrigação valem inteiras:
+   - se há reconhecimento de fala, ele fica SOZINHO com o microfone
+   - no Android, contínuo trava: reinicia no onend
+   ========================================================================== */
+var sess = null;
+function falaSuportada(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
+function ehMovel(){ return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || ""); }
+
+function alternarFala(){
+  if(sess){ encerrarFala(); return; }
+  if(!falaSuportada()){
+    toast("הדפדפן הזה לא מבין דיבור. אפשר לכתוב.");
+    abrirEscrita();
+    return;
+  }
+  iniciarEscuta();
+}
+
+function iniciarEscuta(){
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var sr = new SR();
+  sr.lang = S.config.idioma || "he-IL";
+  sr.continuous = !ehMovel();
+  sr.interimResults = true;
+  sr.maxAlternatives = 1;
+
+  sess = {sr:sr, inicio:Date.now(), texto:"", parcial:"", erro:null, encerrando:false};
+
+  sr.onresult = function(ev){
+    if(!sess) return;
+    var fin = "", par = "";
+    for(var i = ev.resultIndex; i < ev.results.length; i++){
+      var r = ev.results[i];
+      if(r.isFinal) fin += r[0].transcript + " "; else par += r[0].transcript;
+    }
+    if(fin){ sess.texto += fin; sess.parcial = ""; } else { sess.parcial = par; }
+    sess.erro = null;
+    pintarFala();
+  };
+  sr.onerror = function(ev){
+    if(!sess) return;
+    sess.erro = ev.error;
+    if(ev.error === "not-allowed" || ev.error === "service-not-allowed" || ev.error === "audio-capture"){
+      sess.encerrando = true;
+      try { sr.stop(); } catch(e){}
+    }
+    pintarFala();
+  };
+  sr.onend = function(){
+    if(!sess) return;
+    if(!sess.encerrando){ try { sr.start(); return; } catch(e){} }
+    finalizarEscuta();
+  };
+
+  try { sr.start(); }
+  catch(e){ sess = null; toast("לא הצלחתי להפעיל את המיקרופון."); return; }
+  render();
+}
+
+function encerrarFala(){
+  if(!sess || sess.encerrando) return;
+  sess.encerrando = true;
+  try { sess.sr.stop(); } catch(e){ finalizarEscuta(); }
+}
+
+function finalizarEscuta(){
+  var s = sess; if(!s) return;
+  sess = null;
+  var texto = ((s.texto || "") + " " + (s.parcial || "")).replace(/\s+/g, " ").trim();
+  render();
+  if(!texto){
+    toast(
+      (s.erro === "not-allowed" || s.erro === "service-not-allowed")
+        ? "הדפדפן לא נתן גישה למיקרופון."
+      : s.erro === "network" ? "אין אינטרנט להבין דיבור עכשיו."
+      : "לא שמעתי כלום. נסי שוב.");
+    return;
+  }
+  confirmar(texto);
+}
+
+function pintarFala(){
+  var box = document.getElementById("falaViva");
+  if(!box || !sess) return;
+  var t = (sess.texto || "").trim(), p = (sess.parcial || "").trim();
+  if(sess.erro && !t && !p){
+    box.innerHTML = '<span class="par">' + esc(
+      sess.erro === "network" ? "אין אינטרנט…"
+      : sess.erro === "no-speech" ? "לא שמעתי עדיין…"
+      : "מנסה לשמוע…") + "</span>";
+    return;
+  }
+  box.innerHTML = (t || p)
+    ? esc(t) + (p ? ' <span class="par">' + esc(p) + "</span>" : "")
+    : '<span class="par">דברי…</span>';
+}
+
+/* quem não tem reconhecimento de fala ainda consegue usar o app */
+function abrirEscrita(){
+  var ta = el("textarea");
+  var w = el("div");
+  var f = el("div", "f");
+  f.appendChild(el("label", null, "מה לרשום?"));
+  f.appendChild(ta);
+  w.appendChild(f);
+  abrirFolha("כתיבה", w, [
+    botao("ביטול", "", fecharFolha),
+    botao("המשך", "pri", function(){
+      var t = ta.value.trim();
+      if(!t) return;
+      fecharFolha(); confirmar(t);
+    })
+  ]);
+  setTimeout(function(){ ta.focus(); }, 260);
+}
+
+/* ==========================================================================
+   FOLHA DESLIZANTE
+   ========================================================================== */
+function abrirFolha(titulo, corpo, pes){
+  $("#shT").textContent = titulo;
+  var c = $("#shC"); c.innerHTML = ""; c.appendChild(corpo);
+  var p = $("#shP"); p.innerHTML = "";
+  (pes || []).forEach(function(b){ p.appendChild(b); });
+  $("#scrim").classList.add("on");
+  $("#sheet").classList.add("on");
+  c.scrollTop = 0;
+}
+function fecharFolha(){
+  $("#scrim").classList.remove("on");
+  $("#sheet").classList.remove("on");
+}
+$("#scrim").onclick = fecharFolha;
+
+function botao(texto, cls, fn){
+  var b = el("button", "btn " + (cls || ""), esc(texto));
+  b.onclick = fn;
+  return b;
+}
+function campo(rotulo, node, dica){
+  var w = el("div", "f");
+  w.appendChild(el("label", null, esc(rotulo)));
+  w.appendChild(node);
+  if(dica) w.appendChild(el("div", "dica", esc(dica)));
+  return w;
+}
+function entrada(tipo, valor){
+  var i = el("input"); i.type = tipo;
+  if(valor != null) i.value = valor;
+  return i;
+}
+
+/* ==========================================================================
+   TELA DE CONFIRMAÇÃO
+   Diferente do app de irrigação: aqui EDITAR O TEXTO É ROTINA, não exceção.
+   A transcrição é o conteúdo, e o reconhecimento vai errar palavras que
+   ninguém pode consertar automaticamente. Por isso o texto está sempre
+   aberto num campo, não escondido atrás de um botão "editar".
+   ========================================================================== */
+function confirmar(texto){
+  var ctx = {
+    hoje: todayISO(), agora: nowHM(), grupos: S.grupos,
+    itensCompra: S.itens, lugares: S.lugares
+  };
+  var rascunhos = interpretar(texto, ctx);
+  telaConfirmar(texto, rascunhos);
+}
+
+function telaConfirmar(texto, rascunhos){
+  var w = el("div");
+  var erro = el("div", "err hide");
+  w.appendChild(erro);
+  w.appendChild(el("div", "fala-orig", "“" + esc(texto) + "”"));
+
+  var toksFala = tokenizar(texto).toks;
+  var lista = el("div");
+  w.appendChild(lista);
+  var cartoes = [];
+
+  /* Um toque e a palavra que ele ouviu errado vira apelido do item certo.
+     Foi o que mais melhorou o app de irrigação com o uso. */
+  function botaoEnsinar(loja, item){
+    var mj = melhorJanela(toksFala, item);
+    if(!mj || mj.s >= 0.74 || mj.s < 0.3) return null;
+    var palavra = mj.janela;
+    var b = el("button", "ensinar");
+    b.innerHTML = "ללמד: “" + esc(palavra) + "” = " + esc(item.nome);
+    b.onclick = async function(){
+      item.apelidos = (item.apelidos || []).concat(palavra)
+        .filter(function(v, i, a){ return a.indexOf(v) === i; });
+      await put(loja, item);
+      toast("למדתי. בפעם הבאה אבין.");
+      b.remove();
+    };
+    return b;
+  }
+
+  function blocoBotoes(titulo, itens, aoTocar){
+    var bloco = el("div");
+    bloco.appendChild(el("div", "tecido", "<span>" + esc(titulo) + "</span><i></i>"));
+    var chips = el("div", "chips");
+    itens.forEach(function(it){
+      var c = el("button", "chip grande", esc(it.rotulo));
+      c.onclick = function(){ aoTocar(it); };
+      chips.appendChild(c);
+    });
+    bloco.appendChild(chips);
+    return bloco;
+  }
+
+  function desenhar(){
+    lista.innerHTML = ""; cartoes.length = 0;
+
+    rascunhos.forEach(function(d, ix){
+      var c = el("div", "card");
+      cartoes[ix] = c;
+      var g = d.grupoId ? grupoPor(d.grupoId) : null;
+
+      /* --- o texto, sempre aberto pra editar --- */
+      if(d.tipo === "compra"){
+        var linha = el("div");
+        linha.style.display = "flex"; linha.style.gap = "8px";
+        var iq = entrada("number", d.qtd == null ? "" : d.qtd);
+        iq.style.maxWidth = "88px"; iq.placeholder = "כמות";
+        iq.oninput = function(){ d.qtd = iq.value === "" ? null : parseFloat(iq.value); };
+        var ii = entrada("text", d.item);
+        ii.oninput = function(){ d.item = ii.value; };
+        linha.appendChild(iq); linha.appendChild(ii);
+        c.appendChild(campo(g ? g.nome : "", linha));
+      } else if(d.tipo === "gasto"){
+        var lv = el("div");
+        lv.style.display = "flex"; lv.style.gap = "8px";
+        var iv = entrada("number", d.valor == null ? "" : d.valor);
+        iv.step = "0.01"; iv.style.maxWidth = "116px";
+        iv.oninput = function(){ d.valor = iv.value === "" ? null : parseFloat(iv.value); };
+        var io = entrada("text", d.onde || "");
+        io.placeholder = "איפה / ממי";
+        io.oninput = function(){ d.onde = io.value; };
+        lv.appendChild(iv); lv.appendChild(io);
+        c.appendChild(campo("₪ " + (g ? g.nome : ""), lv));
+      } else {
+        var ta = el("textarea");
+        ta.value = d.texto || "";
+        ta.oninput = function(){ d.texto = ta.value; };
+        c.appendChild(campo(g ? g.nome : "טקסט", ta,
+          "אפשר לתקן מילים שלא נשמעו נכון"));
+      }
+
+      /* --- data e hora do compromisso --- */
+      if(d.tipo === "compromisso"){
+        var ld = el("div");
+        ld.style.display = "flex"; ld.style.gap = "8px";
+        var idt = entrada("date", d.data || todayISO());
+        idt.oninput = function(){ d.data = idt.value; d.incerto = false; };
+        var ihr = entrada("time", d.hora || "");
+        ihr.oninput = function(){ d.hora = ihr.value; };
+        ld.appendChild(idt); ld.appendChild(ihr);
+        c.appendChild(campo("מתי", ld,
+          d.repete === "semanal" ? "חוזר כל שבוע"
+          : d.repete === "diario" ? "חוזר כל יום" : ""));
+
+        /* Ela deu hora mas não deu dia. Perguntar é melhor que chutar:
+           compromisso no dia errado é pior que compromisso não marcado. */
+        if(d.incerto){
+          c.appendChild(blocoBotoes("לאיזה יום?", [
+            {rotulo:L.hoje,   v:todayISO()},
+            {rotulo:L.amanha, v:somarDias(todayISO(), 1)},
+            {rotulo:DIA_NOME[diaSemana(somarDias(todayISO(), 2))], v:somarDias(todayISO(), 2)}
+          ], function(o){ d.data = o.v; d.incerto = false; desenhar(); }));
+        }
+      }
+
+      /* --- data do lançamento --- */
+      if(d.tipo === "gasto"){
+        var idd = entrada("date", d.data || todayISO());
+        idd.oninput = function(){ d.data = idd.value; };
+        c.appendChild(campo("מתי", idd));
+
+        /* Sinal trocado erra o mês em dobro. Nunca chutar. */
+        if(!d.direcao){
+          c.appendChild(blocoBotoes("יצא או נכנס?", [
+            {rotulo:"יצא",   v:"saiu"},
+            {rotulo:"נכנס", v:"entrou"}
+          ], function(o){ d.direcao = o.v; desenhar(); }));
+        } else {
+          var tag = el("div", "chips");
+          var ch = el("button", "chip on",
+            d.direcao === "saiu" ? "יצא" : "נכנס");
+          ch.onclick = function(){ d.direcao = (d.direcao === "saiu" ? "entrou" : "saiu"); desenhar(); };
+          tag.appendChild(ch);
+          c.appendChild(tag);
+        }
+      }
+
+      /* --- não sei em que grupo isso vai: botões grandes, e aprende --- */
+      if(!d.grupoId){
+        c.appendChild(blocoBotoes("לאיזו קבוצה?",
+          S.grupos.map(function(gg){ return {rotulo:gg.nome, v:gg}; }),
+          function(o){
+            d.grupoId = o.v.id;
+            d.tipo = (o.v.comportamento === "lista") ? "compra"
+                   : (o.v.comportamento === "financeiro") ? "gasto"
+                   : (o.v.comportamento === "agenda") ? "compromisso" : "nota";
+            if(d.tipo === "compra" && !d.item) d.item = d.texto;
+            d._ensinarGrupo = o.v;
+            desenhar();
+          }));
+      } else if(d._ensinarGrupo){
+        var bg = botaoEnsinar("grupos", d._ensinarGrupo);
+        if(bg) c.appendChild(bg);
+      }
+
+      if(rascunhos.length > 1){
+        var rm = el("button", "chip");
+        rm.textContent = "הסר";
+        rm.style.marginTop = "10px";
+        rm.onclick = function(){ rascunhos.splice(ix, 1); desenhar(); };
+        c.appendChild(rm);
+      }
+      lista.appendChild(c);
+    });
+
+    if(!rascunhos.length) lista.appendChild(el("div", "vazio", "אין מה לשמור"));
+  }
+  desenhar();
+
+  function cobrar(ix, msg){
+    erro.textContent = msg; erro.classList.remove("hide");
+    var c = cartoes[ix];
+    if(c){
+      c.classList.add("pisca");
+      c.scrollIntoView({block:"center", behavior:"smooth"});
+      setTimeout(function(){ c.classList.remove("pisca"); }, 2200);
+    }
+  }
+
+  async function salvar(){
+    for(var i = 0; i < rascunhos.length; i++){
+      var d = rascunhos[i];
+      if(!d.grupoId) return cobrar(i, "חסרה קבוצה — בחרי אחת.");
+      if(d.tipo === "gasto"){
+        if(d.valor == null || isNaN(d.valor)) return cobrar(i, "חסר סכום.");
+        if(!d.direcao) return cobrar(i, "יצא או נכנס? בחרי.");
+      }
+      if(d.tipo === "compra" && !String(d.item || "").trim()) return cobrar(i, "חסר שם למוצר.");
+      if(d.tipo === "nota" && !String(d.texto || "").trim()) return cobrar(i, "אין טקסט.");
+      if(d.tipo === "compromisso" && !d.data) return cobrar(i, "חסר תאריך.");
+    }
+
+    for(var j = 0; j < rascunhos.length; j++){
+      var r = Object.assign({}, rascunhos[j]);
+      Object.keys(r).forEach(function(k){ if(k[0] === "_") delete r[k]; });
+      r.id = uid();
+      r.criadoEm = new Date().toISOString();
+      if(r.tipo === "compra"){
+        r.comprado = false;
+        await lembrarItem(r.item);
+      }
+      if(r.tipo === "gasto" && r.onde) await lembrarLugar(r.onde);
+      await put("notas", r);
+      S.notas.push(r);
+    }
+    fecharFolha(); render();
+    toast(rascunhos.length === 1
+      ? "נשמר"
+      : "נשמרו " + rascunhos.length);
+  }
+
+  abrirFolha("בדקי מה הבנתי", w, [
+    botao("ביטול", "", function(){ fecharFolha(); render(); }),
+    botao("שמירה", "pri", salvar)
+  ]);
+}
+
+/* a lista de compras aprende sozinha: tudo que ela compra entra no
+   vocabulário e melhora o reconhecimento da próxima vez */
+async function lembrarItem(nome){
+  nome = String(nome || "").trim();
+  if(!nome) return;
+  var achou = acharNaLista(tokenizar(nome).toks, S.itens, 0.85);
+  if(achou){ achou.item.usos = (achou.item.usos || 0) + 1; await put("itens", achou.item); return; }
+  var novo = {id:"item-" + slug(nome), nome:nome, apelidos:[], usos:1};
+  await put("itens", novo); S.itens.push(novo);
+}
+async function lembrarLugar(nome){
+  nome = String(nome || "").trim();
+  if(!nome || nome.length < 2) return;
+  var achou = acharNaLista(tokenizar(nome).toks, S.lugares, 0.85);
+  if(achou) return;
+  var novo = {id:"lugar-" + slug(nome), nome:nome, apelidos:[]};
+  await put("lugares", novo); S.lugares.push(novo);
+}
+
+/* ==========================================================================
+   TELAS
+   ========================================================================== */
+var aba = "hoje", subAba = "";
+
+function irPara(t){ aba = t; subAba = ""; render(); window.scrollTo(0, 0); }
+
+function cabecalho(titulo, sub, icone){
+  $("#hdT").textContent = titulo;
+  $("#hdS").textContent = sub || "";
+  $("#hdI").innerHTML = icone || "";
+}
+
+var SVG_SOL = '<svg width="32" height="32" viewBox="0 0 34 34" fill="none" stroke="var(--ocre)" stroke-width="1.1" stroke-linecap="round"><circle cx="17" cy="17" r="6.4"/><path d="M17 3.4v3.6M17 27v3.6M3.4 17H7M27 17h3.6M7.4 7.4l2.5 2.5M24.1 24.1l2.5 2.5M26.6 7.4l-2.5 2.5M9.9 24.1l-2.5 2.5"/></svg>';
+var SVG_LUA = '<svg width="32" height="32" viewBox="0 0 34 34" fill="none" stroke="var(--ocre)" stroke-width="1.1" stroke-linecap="round"><path d="M25.5 20.4A9.6 9.6 0 0 1 13.6 8.5a9.6 9.6 0 1 0 11.9 11.9z"/><path d="M25 7.5v3M23.5 9h3"/></svg>';
+var SVG_MIC = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#FDFAF4" stroke-width="1.5" stroke-linecap="round"><rect x="9" y="2.6" width="6" height="11.2" rx="3"/><path d="M5.4 11.2a6.6 6.6 0 0 0 13.2 0M12 17.8V21"/></svg>';
+var SVG_CIFRA = '<svg width="32" height="32" viewBox="0 0 34 34" fill="none" stroke="var(--salvia)" stroke-width="1.1" stroke-linecap="round"><path d="M8 26V13.5M17 26V7.5M26 26v-8.5"/><path d="M5 30h24"/></svg>';
+var SVG_CESTA = '<svg width="32" height="32" viewBox="0 0 34 34" fill="none" stroke="var(--salvia)" stroke-width="1.1" stroke-linecap="round"><path d="M5 12h24l-2.5 15h-19z"/><path d="M12 12l3-6M22 12l-3-6"/></svg>';
+
+function blocoMic(){
+  var w = el("div", "micwrap");
+  var h1 = el("div", "halo"), h2 = el("div", "halo2");
+  var b = el("button", "mic" + (sess ? " on" : ""));
+  b.innerHTML = SVG_MIC;
+  b.setAttribute("aria-label", "דברי");
+  b.onclick = alternarFala;
+  h2.appendChild(b); h1.appendChild(h2); w.appendChild(h1);
+  if(sess){
+    var fv = el("div", "falaviva"); fv.id = "falaViva";
+    w.appendChild(fv);
+    setTimeout(pintarFala, 0);
+  } else {
+    w.appendChild(el("div", "diz", "הקישי ודברי"));
+  }
+  return w;
+}
+
+/* ---- compromissos ordenados ---- */
+function compromissos(){
+  return S.notas.filter(function(n){ return n.tipo === "compromisso"; })
+    .sort(function(a, b){
+      var x = (a.data || "") + (a.hora || "99:99");
+      var y = (b.data || "") + (b.hora || "99:99");
+      return x < y ? -1 : x > y ? 1 : 0;
+    });
+}
+/* repetição semanal: mostra a próxima ocorrência a partir de hoje */
+function ocorrenciaEm(n, iso){
+  if(!n.repete) return n.data === iso;
+  if(n.repete === "diario") return iso >= n.data;
+  return iso >= n.data && diaSemana(iso) === n.diaRepete;
+}
+function doDia(iso){
+  return compromissos().filter(function(n){ return ocorrenciaEm(n, iso); });
+}
+
+function telaHoje(){
+  var hoje = todayISO();
+  cabecalho(L.hoje, fmtDataLonga(hoje), SVG_SOL);
+  var v = el("div");
+
+  /* --- o arco: o próximo compromisso --- */
+  var prox = null;
+  for(var k = 0; k < 8 && !prox; k++){
+    var iso = somarDias(hoje, k);
+    var lista = doDia(iso).filter(function(n){
+      if(iso > hoje) return true;
+      var m = minutosAte(iso, n.hora);
+      return m === null || m > -30;
+    });
+    if(lista.length) prox = {n:lista[0], iso:iso};
+  }
+  var arco = el("div", "arco" + (prox ? "" : " calmo"));
+  if(prox){
+    var min = minutosAte(prox.iso, prox.n.hora);
+    var quando = (min !== null && fmtDaqui(min)) || fmtDia(prox.iso);
+    arco.innerHTML =
+      '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--terracota)" stroke-width="1.2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.4V12l3.1 1.9"/></svg>' +
+      '<div class="quando">' + esc(quando) + "</div>" +
+      '<div class="oque serif">' + esc(prox.n.texto) + "</div>" +
+      '<div class="hora num">' + esc(prox.n.hora || "") + "</div>";
+  } else {
+    arco.innerHTML =
+      '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--salvia)" stroke-width="1.2" stroke-linecap="round"><path d="M4 13.5c3-4 5.5-4 8 0s5 4 8 0"/><path d="M4 18c3-4 5.5-4 8 0s5 4 8 0"/></svg>' +
+      '<div class="oque serif">אין כלום בקרוב</div>';
+  }
+  v.appendChild(arco);
+  v.appendChild(blocoMic());
+
+  /* --- atalho de sonho: um toque, sem escolher nada --- */
+  var atalhos = el("div", "chips");
+  atalhos.style.justifyContent = "center";
+  var bs = el("button", "chip", "חלמתי…");
+  bs.onclick = function(){ aba = "notas"; subAba = "sonhos"; render(); setTimeout(alternarFala, 120); };
+  atalhos.appendChild(bs);
+  var bw = el("button", "chip" + (subAba === "semana" ? " on" : ""), L.semana);
+  bw.onclick = function(){ subAba = (subAba === "semana" ? "" : "semana"); render(); };
+  atalhos.appendChild(bw);
+  v.appendChild(atalhos);
+
+  if(subAba === "semana"){
+    /* a semana começa no DOMINGO */
+    var ini = somarDias(hoje, -diaSemana(hoje));
+    for(var i = 0; i < 7; i++){
+      var d = somarDias(ini, i);
+      var itens = doDia(d);
+      v.appendChild(el("div", "tecido",
+        "<span>" + esc(DIA_NOME[diaSemana(d)] + " · " + fmtDiaCurto(d)) + "</span><i></i>"));
+      if(!itens.length){ v.appendChild(el("div", "vazio", "—")); continue; }
+      itens.forEach(function(n){ v.appendChild(linhaCompromisso(n, d)); });
+    }
+  } else {
+    v.appendChild(el("div", "tecido", "<span>" + esc(L.hoje) + "</span><i></i>"));
+    var ah = doDia(hoje);
+    if(!ah.length) v.appendChild(el("div", "vazio", "אין כלום היום"));
+    ah.forEach(function(n){ v.appendChild(linhaCompromisso(n, hoje)); });
+
+    var am = somarDias(hoje, 1), lam = doDia(am);
+    if(lam.length){
+      v.appendChild(el("div", "tecido", "<span>" + esc(L.amanha) + "</span><i></i>"));
+      lam.forEach(function(n){ v.appendChild(linhaCompromisso(n, am)); });
+    }
+  }
+  return v;
+}
+
+function linhaCompromisso(n, iso){
+  var b = el("button", "item");
+  var min = minutosAte(iso, n.hora);
+  if(min !== null && min <= 0) b.classList.add("feito");
+  else if(min !== null && min < 60) b.classList.add("agora");
+  b.appendChild(el("div", "p"));
+  b.appendChild(el("div", "h num", esc(n.hora || "—")));
+  b.appendChild(el("div", "t", esc(n.texto) +
+    (n.repete ? '<small>חוזר</small>' : "")));
+  b.onclick = function(){ verNota(n); };
+  return b;
+}
+
+/* ---------- רשומות: sonhos e ideias ---------- */
+function telaNotas(){
+  var quais = subAba === "ideias" ? "ideias" : "sonhos";
+  var g = grupoChave(quais);
+  cabecalho(g ? g.nome : "", "", quais === "sonhos" ? SVG_LUA : SVG_SOL);
+  var v = el("div");
+
+  var chips = el("div", "chips");
+  [["sonhos", grupoChave("sonhos")], ["ideias", grupoChave("ideias")]].forEach(function(par){
+    if(!par[1]) return;
+    var c = el("button", "chip" + (quais === par[0] ? " on" : ""), esc(par[1].nome));
+    c.onclick = function(){ subAba = par[0]; render(); };
+    chips.appendChild(c);
+  });
+  v.appendChild(chips);
+
+  v.appendChild(blocoMic());
+
+  /* Busca em texto completo. O valor de um diário de sonhos aparece meses
+     depois, quando ela procura "סבתא" e acha sete. */
+  var busca = entrada("search", S.config["busca_" + quais] || "");
+  busca.placeholder = "חיפוש";
+  busca.oninput = function(){
+    S.config["busca_" + quais] = busca.value;
+    desenharLista();
+  };
+  var fb = el("div", "f"); fb.appendChild(busca);
+  v.appendChild(fb);
+
+  var alvo = el("div");
+  v.appendChild(alvo);
+
+  function desenharLista(){
+    alvo.innerHTML = "";
+    var q = normHe(String(S.config["busca_" + quais] || "").trim());
+    var lista = S.notas.filter(function(n){
+      return n.tipo === "nota" && g && n.grupoId === g.id &&
+        (!q || normHe(n.texto || "").indexOf(q) >= 0);
+    }).sort(function(a, b){ return (b.data || "") < (a.data || "") ? -1 : 1; });
+
+    if(!lista.length){
+      alvo.appendChild(el("div", "vazio", q
+        ? "אין תוצאות"
+        : "עוד אין כלום כאן"));
+      return;
+    }
+    lista.forEach(function(n){
+      var b = el("button", "item");
+      b.appendChild(el("div", "t",
+        '<span class="serif">' + esc(n.texto) + "</span><small>" +
+        esc(n.noite ? fmtNoite(n.data) : fmtDia(n.data)) + "</small>"));
+      b.onclick = function(){ verNota(n); };
+      alvo.appendChild(b);
+    });
+  }
+  desenharLista();
+  return v;
+}
+
+/* ---------- קניות: uma lista só ---------- */
+function telaCompras(){
+  var g = grupoChave("compras");
+  cabecalho(g ? g.nome : "", "", SVG_CESTA);
+  var v = el("div");
+  v.appendChild(blocoMic());
+
+  var lista = S.notas.filter(function(n){ return n.tipo === "compra" && !n.arquivado; });
+  var aComprar = lista.filter(function(n){ return !n.comprado; });
+  var jaComprado = lista.filter(function(n){ return n.comprado; });
+
+  function linha(n){
+    var b = el("button", "item" + (n.comprado ? " feito" : ""));
+    b.appendChild(el("div", "p"));
+    b.appendChild(el("div", "t", esc(n.item) +
+      (n.qtd ? ' <small class="num">' + esc(fmtNum(n.qtd) + (n.unidade ? " " + n.unidade : "")) + "</small>" : "")));
+    /* marcar como comprado é um toque na linha inteira — ela vai fazer isso
+       com uma mão, empurrando carrinho */
+    b.onclick = async function(){
+      n.comprado = !n.comprado;
+      await put("notas", n);
+      render();
+    };
+    return b;
+  }
+
+  v.appendChild(el("div", "tecido", "<span>לקנות</span><i></i>"));
+  if(!aComprar.length) v.appendChild(el("div", "vazio", "הרשימה ריקה"));
+  aComprar.forEach(function(n){ v.appendChild(linha(n)); });
+
+  if(jaComprado.length){
+    v.appendChild(el("div", "tecido", "<span>נקנה</span><i></i>"));
+    jaComprado.forEach(function(n){ v.appendChild(linha(n)); });
+
+    /* sem isto a lista vira lixo em duas semanas */
+    var fim = el("div", "linha-btn");
+    fim.style.marginTop = "16px";
+    fim.appendChild(botao("סיימתי קנייה", "pri", async function(){
+      for(var i = 0; i < jaComprado.length; i++){
+        jaComprado[i].arquivado = true;
+        await put("notas", jaComprado[i]);
+      }
+      render();
+      /* Lista é intenção, gasto é fato. O valor ela só sabe no caixa —
+         então perguntamos, nunca inventamos. */
+      perguntarGasto();
+    }));
+    v.appendChild(fim);
+  }
+
+  /* os de sempre: economiza mais fala que qualquer reconhecimento bom */
+  var usuais = S.itens.filter(function(it){ return (it.usos || 0) > 0; })
+    .sort(function(a, b){ return (b.usos || 0) - (a.usos || 0); })
+    .filter(function(it){
+      /* nem o que falta comprar, nem o que já foi posto no carrinho hoje */
+      return !lista.some(function(n){ return normHe(n.item) === normHe(it.nome); });
+    }).slice(0, 10);
+  if(usuais.length){
+    v.appendChild(el("div", "tecido", "<span>הרגילים</span><i></i>"));
+    var ch = el("div", "chips");
+    usuais.forEach(function(it){
+      var c = el("button", "chip", "+ " + esc(it.nome));
+      c.onclick = async function(){
+        var r = {id:uid(), tipo:"compra", grupoId:g.id, item:it.nome, qtd:null,
+                 unidade:null, comprado:false, criadoEm:new Date().toISOString()};
+        await put("notas", r); S.notas.push(r);
+        await lembrarItem(it.nome);
+        render();
+      };
+      ch.appendChild(c);
+    });
+    v.appendChild(ch);
+  }
+  return v;
+}
+
+function perguntarGasto(){
+  var gd = grupoChave("dinheiro");
+  if(!gd) return;
+  var iv = entrada("number", "");
+  iv.step = "0.01";
+  var w = el("div");
+  w.appendChild(campo("כמה שילמת?", iv,
+    "אפשר לדלג — הרשימה לא רושמת כסף לבד"));
+  abrirFolha("קנייה הסתיימה", w, [
+    botao("דלג", "", fecharFolha),
+    botao("רישום", "pri", async function(){
+      var val = parseFloat(iv.value);
+      if(isNaN(val)){ fecharFolha(); return; }
+      var r = {id:uid(), tipo:"gasto", grupoId:gd.id, valor:val, direcao:"saiu",
+               onde:"קניות", data:todayISO(), criadoEm:new Date().toISOString()};
+      await put("notas", r); S.notas.push(r);
+      fecharFolha(); render();
+      toast("נרשם");
+    })
+  ]);
+}
+
+/* ---------- כספים: o mês ---------- */
+function telaDinheiro(){
+  var g = grupoChave("dinheiro");
+  var mes = S.config.mes || todayISO().slice(0, 7);
+  var pm = mes.split("-").map(Number);
+  cabecalho(g ? g.nome : "", MES_NOME[pm[1]-1] + " " + pm[0], SVG_CIFRA);
+  var v = el("div");
+
+  var nav = el("div", "mesnav");
+  /* Em RTL a leitura corre da direita pra esquerda: VOLTAR fica à direita,
+     AVANÇAR à esquerda. O primeiro filho do flex é o da direita. */
+  var bAnt = el("button"); bAnt.innerHTML = "›";        /* volta um mês */
+  bAnt.onclick = function(){ S.config.mes = mesSomar(mes, -1); render(); };
+  var bProx = el("button"); bProx.innerHTML = "‹";      /* avança um mês */
+  bProx.onclick = function(){ S.config.mes = mesSomar(mes, 1); render(); };
+  var rot = el("div", "serif", esc(MES_NOME[pm[1]-1] + " " + pm[0]));
+  rot.style.fontSize = "18px";
+  nav.appendChild(bAnt); nav.appendChild(rot); nav.appendChild(bProx);
+  v.appendChild(nav);
+
+  var lista = S.notas.filter(function(n){
+    return n.tipo === "gasto" && String(n.data || "").slice(0, 7) === mes;
+  }).sort(function(a, b){ return (b.data || "") < (a.data || "") ? -1 : 1; });
+
+  var entrou = 0, saiu = 0;
+  lista.forEach(function(n){
+    if(n.direcao === "entrou") entrou += (n.valor || 0); else saiu += (n.valor || 0);
+  });
+
+  var tiles = el("div", "tiles");
+  tiles.innerHTML =
+    '<div class="tile"><div class="r">נכנס</div><div class="v serif num e">' + shekel(entrou) + "</div></div>" +
+    '<div class="tile saldo"><div class="r">מאזן</div><div class="v serif num">' + shekel(entrou - saiu) + "</div></div>" +
+    '<div class="tile"><div class="r">יצא</div><div class="v serif num s">' + shekel(saiu) + "</div></div>";
+  v.appendChild(tiles);
+
+  v.appendChild(blocoMic());
+
+  if(!lista.length){
+    v.appendChild(el("div", "vazio", "אין תנועות בחודש הזה"));
+  } else {
+    var diaAtual = null;
+    lista.forEach(function(n){
+      if(n.data !== diaAtual){
+        diaAtual = n.data;
+        v.appendChild(el("div", "tecido", "<span>" + esc(fmtDia(n.data)) + "</span><i></i>"));
+      }
+      var b = el("button", "lanc");
+      var ent = n.direcao === "entrou";
+      b.appendChild(el("div", "seta " + (ent ? "e" : "s"), ent ? "↑" : "↓"));
+      b.appendChild(el("div", "onde", esc(n.onde || (grupoPor(n.grupoId) || {}).nome || "")));
+      b.appendChild(el("div", "val num" + (ent ? " e" : ""), shekel(n.valor)));
+      b.onclick = function(){ verNota(n); };
+      v.appendChild(b);
+    });
+
+    /* quebra por lugar */
+    var porOnde = {};
+    lista.forEach(function(n){
+      if(n.direcao === "entrou") return;
+      var chave = normHe(n.onde || "—");
+      if(!porOnde[chave]) porOnde[chave] = {nome:n.onde || "—", total:0};
+      porOnde[chave].total += (n.valor || 0);
+    });
+    var arr = Object.keys(porOnde).map(function(k){ return porOnde[k]; })
+      .sort(function(a, b){ return b.total - a.total; }).slice(0, 6);
+    if(arr.length){
+      v.appendChild(el("div", "tecido", "<span>לפי מקום</span><i></i>"));
+      var maior = arr[0].total || 1;
+      arr.forEach(function(x){
+        var bb = el("div", "barra");
+        bb.innerHTML = '<div class="l"><span>' + esc(x.nome) + '</span><b class="num">' + shekel(x.total) + "</b></div>" +
+          '<div class="g"><i style="width:' + Math.round(x.total / maior * 100) + '%"></i></div>';
+        v.appendChild(bb);
+      });
+    }
+  }
+  return v;
+}
+function mesSomar(mes, n){
+  var p = mes.split("-").map(Number);
+  var d = new Date(p[0], p[1] - 1 + n, 1);
+  return d.getFullYear() + "-" + p2(d.getMonth() + 1);
+}
+
+/* ---------- עוד ---------- */
+function telaMais(){
+  cabecalho("עוד", "", "");
+  var v = el("div");
+
+  var c1 = el("div", "card");
+  c1.appendChild(el("h3", "serif", "קבוצות"));
+  var ch = el("div", "chips");
+  S.grupos.forEach(function(g){ ch.appendChild(el("span", "chip", esc(g.nome))); });
+  c1.appendChild(ch);
+  v.appendChild(c1);
+
+  /* A regra de ambiguidade escrita na tela — o documento manda escolher uma,
+     escrever, e não mudar. */
+  var c2 = el("div", "card");
+  c2.appendChild(el("h3", "serif", "איך אני מבין תאריכים"));
+  c2.appendChild(el("p", null,
+    "“יום שלישי” — תמיד הפעם הקרובה הבאה.<br>" +
+    "“בשלוש” — 15:00. מספר בין 1 ל-7 הוא אחר הצהריים.<br>" +
+    "השבוע מתחיל ביום ראשון."));
+  v.appendChild(c2);
+
+  /* Honestidade que o documento exige: o app NÃO toca alarme. */
+  var c3 = el("div", "card");
+  c3.appendChild(el("h3", "serif", "תזכורות"));
+  c3.appendChild(el("p", null,
+    "האפליקציה מראה מה קרוב, אבל <b>לא מצלצלת</b> כשהיא סגורה. זה יגיע בשלב הבא."));
+  v.appendChild(c3);
+
+  var c4 = el("div", "card");
+  c4.appendChild(el("h3", "serif", "גיבוי"));
+  var lb = el("div", "linha-btn");
+  lb.appendChild(botao("יצוא", "", exportar));
+  lb.appendChild(botao("יבוא", "", importar));
+  c4.appendChild(lb);
+  c4.appendChild(el("div", "dica",
+    "הכל נשמר רק במכשיר הזה. סנכרון מוצפן יגיע בשלב הבא."));
+  v.appendChild(c4);
+
+  var c5 = el("div", "card");
+  var bt = botao("מצב לילה / יום", "", async function(){
+    var n = !(S.config.noite);
+    await salvarCfg({noite:n, noiteAuto:false});
+    aplicarTema(); render();
+  });
+  c5.appendChild(bt);
+  v.appendChild(c5);
+  return v;
+}
+
+function verNota(n){
+  var w = el("div");
+  var g = grupoPor(n.grupoId);
+  if(n.fala) w.appendChild(el("div", "fala-orig", "“" + esc(n.fala) + "”"));
+
+  if(n.tipo === "compromisso"){
+    var it = entrada("text", n.texto); w.appendChild(campo("מה", it));
+    var idt = entrada("date", n.data); w.appendChild(campo("מתי", idt));
+    var ihr = entrada("time", n.hora || ""); w.appendChild(campo("שעה", ihr));
+    var salvarFn = async function(){
+      n.texto = it.value; n.data = idt.value; n.hora = ihr.value;
+      await put("notas", n); fecharFolha(); render(); toast("עודכן");
+    };
+    abrirFolha(g ? g.nome : "", w, [rodapeApagar(n), botao("שמירה", "pri", salvarFn)]);
+    return;
+  }
+  if(n.tipo === "gasto"){
+    var iv = entrada("number", n.valor); iv.step = "0.01";
+    w.appendChild(campo("סכום", iv));
+    var io = entrada("text", n.onde || "");
+    w.appendChild(campo("איפה / ממי", io));
+    var idd = entrada("date", n.data); w.appendChild(campo("מתי", idd));
+    abrirFolha(g ? g.nome : "", w, [rodapeApagar(n), botao("שמירה", "pri", async function(){
+      n.valor = parseFloat(iv.value); n.onde = io.value; n.data = idd.value;
+      await put("notas", n); fecharFolha(); render(); toast("עודכן");
+    })]);
+    return;
+  }
+  var ta = el("textarea"); ta.value = n.texto || "";
+  w.appendChild(campo(n.noite ? fmtNoite(n.data) : fmtDia(n.data), ta));
+  abrirFolha(g ? g.nome : "", w, [rodapeApagar(n), botao("שמירה", "pri", async function(){
+    n.texto = ta.value;
+    await put("notas", n); fecharFolha(); render(); toast("עודכן");
+  })]);
+}
+
+function rodapeApagar(n){
+  return botao("מחיקה", "dng", async function(){
+    await del("notas", n.id);
+    S.notas = S.notas.filter(function(x){ return x.id !== n.id; });
+    fecharFolha(); render(); toast("נמחק");
+  });
+}
+
+/* ---------- backup ---------- */
+function exportar(){
+  var dados = {versao:1, quando:new Date().toISOString(),
+    grupos:S.grupos, notas:S.notas, lugares:S.lugares, itens:S.itens};
+  var b = new Blob([JSON.stringify(dados, null, 1)], {type:"application/json"});
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(b);
+  a.download = "maya-" + todayISO() + ".json";
+  a.click();
+}
+function importar(){
+  var i = document.createElement("input");
+  i.type = "file"; i.accept = "application/json,.json";
+  i.onchange = async function(){
+    var f = i.files[0]; if(!f) return;
+    try {
+      var d = JSON.parse(await f.text());
+      var lojas = ["grupos","notas","lugares","itens"];
+      for(var k = 0; k < lojas.length; k++){
+        var arr = d[lojas[k]] || [];
+        for(var j = 0; j < arr.length; j++) await put(lojas[k], arr[j]);
+      }
+      await carregar(); render();
+      toast("יובא");
+    } catch(e){ toast("הקובץ לא תקין"); }
+  };
+  i.click();
+}
+
+/* ==========================================================================
+   TEMA — a noite não é outro tema, é o mesmo app depois do pôr do sol.
+   A tela de sonhos abre escura de madrugada, sem perguntar.
+   ========================================================================== */
+function aplicarTema(){
+  var h = new Date().getHours();
+  var auto = (S.config.noiteAuto !== false);
+  var noite = auto ? (h >= 20 || h < 7) : !!S.config.noite;
+  if(aba === "notas" && subAba === "sonhos" && (h >= 20 || h < 9)) noite = true;
+  document.documentElement.classList.toggle("noite", noite);
+  var m = document.querySelector('meta[name="theme-color"]');
+  if(m) m.setAttribute("content", noite ? "#1C1714" : "#F6EFE4");
+}
+
+/* ==========================================================================
+   NAVEGAÇÃO E DESENHO
+   ========================================================================== */
+var ABAS = [
+  {k:"hoje",    r:"היום"},
+  {k:"notas",   r:"רשומות"},
+  {k:"compras", r:"קניות"},
+  {k:"dinheiro",r:"כספים"},
+  {k:"mais",    r:"עוד"}
+];
+function desenharNav(){
+  var n = $("#nav"); n.innerHTML = "";
+  ABAS.forEach(function(a){
+    var b = el("button", aba === a.k ? "on" : "");
+    b.appendChild(el("div", "pt"));
+    b.appendChild(el("div", null, esc(a.r)));
+    b.onclick = function(){ irPara(a.k); };
+    n.appendChild(b);
+  });
+}
+
+function render(){
+  aplicarTema();
+  desenharNav();
+  var v = $("#view");
+  v.innerHTML = "";
+  var tela =
+    aba === "notas"    ? telaNotas() :
+    aba === "compras"  ? telaCompras() :
+    aba === "dinheiro" ? telaDinheiro() :
+    aba === "mais"     ? telaMais() : telaHoje();
+  v.appendChild(tela);
+}
+
+async function carregar(){
+  S.grupos  = await todos("grupos");
+  S.notas   = await todos("notas");
+  S.lugares = await todos("lugares");
+  S.itens   = await todos("itens");
+  var cfg = await todos("config");
+  S.config = cfg[0] || {id:"app"};
+  S.grupos.sort(function(a, b){ return (a.ordem || 9) - (b.ordem || 9); });
+}
+
+(async function inicio(){
+  try {
+    await abrirDB();
+    await carregar();
+    await semear();
+    await carregar();
+  } catch(e){
+    console.error(e);
+    document.body.innerHTML = '<div style="padding:40px;text-align:center">' +
+      'לא הצלחתי לפתוח את המידע.</div>';
+    return;
+  }
+  render();
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  }
+  /* deixa o app testável sem microfone */
+  window.__falar = function(t){ confirmar(t); };
+})();
+</script>
+</body>
+</html>
