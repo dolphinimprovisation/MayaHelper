@@ -999,13 +999,18 @@ var GATILHO_COMIDA = ["\u05D0\u05DB\u05DC\u05EA\u05D9","\u05D0\u05DB\u05DC\u05E0
 var PORCOES = [
   {t:"\u05E6\u05DC\u05D7\u05EA", g:300, vaga:true},   /* צלחת  prato */
   {t:"\u05E7\u05E2\u05E8\u05D4", g:250, vaga:true},   /* קערה  tigela */
+  {t:"\u05E7\u05E2\u05E8\u05EA", g:250, vaga:true},
   {t:"\u05DB\u05D5\u05E1", g:240},          /* כוס   copo */
+  {t:"\u05DB\u05D5\u05E1\u05D5\u05EA", g:240},
   {t:"\u05E4\u05E8\u05D5\u05E1\u05D4", g:30},   /* פרוסה fatia */
+  {t:"\u05E4\u05E8\u05D5\u05E1\u05EA", g:30},   /* פרוסת "fatia de" — a forma construta,
+                                                        que em hebraico é a mais falada */
   {t:"\u05E4\u05E8\u05D5\u05E1\u05D5\u05EA", g:30},
   {t:"\u05DB\u05E3", g:15},                  /* כף    colher */
   {t:"\u05DB\u05E4\u05D5\u05EA", g:15},
   {t:"\u05DB\u05E4\u05D9\u05EA", g:5},     /* כפית  colherinha */
   {t:"\u05D7\u05EA\u05D9\u05DB\u05D4", g:80, vaga:true},   /* חתיכה pedaço */
+  {t:"\u05D7\u05EA\u05D9\u05DB\u05EA", g:80, vaga:true},
   {t:"\u05D9\u05D7\u05D9\u05D3\u05D4", g:0, vaga:true},    /* יחידה = a porção do próprio alimento */
   {t:"\u05D1\u05E7\u05D1\u05D5\u05E7", g:500},  /* בקבוק garrafa */
   {t:"\u05DB\u05D3\u05D5\u05E8", g:60}     /* כדור  bola (sorvete) */
@@ -1086,7 +1091,9 @@ function lerItemComida(parte, orig, alimentos){
     g = n * 100;                                 /* desconhecido: 100 g e ela corrige */
   }
 
-  return {item: al ? al.nome : nome, faladoComo: nome, alimentoId: al ? al.id : null,
+  /* o nome guardado é o que ELA falou ("לחם ללא גלוטן"), não o da tabela
+     ("לחם"). Os números vêm do casamento; as palavras são dela. */
+  return {item: nome, daTabela: al ? al.nome : null, alimentoId: al ? al.id : null,
           qtd: qtd, gramas: Math.round(g), porcao: porcaoDita ? porcaoDita.t : null,
           alimento: al};
 }
@@ -1502,11 +1509,18 @@ var ALIMENTOS_SEMENTE = [
 ];
 
 async function semear(){
-  if(!S.grupos.length){
-    for(var i = 0; i < GRUPOS_SEMENTE.length; i++){
-      var g = Object.assign({id:"grupo-" + GRUPOS_SEMENTE[i].chave}, GRUPOS_SEMENTE[i]);
-      await put("grupos", g); S.grupos.push(g);
-    }
+  /* Grupo por grupo, e NÃO "só se a lista estiver vazia". Quem já tinha o app
+     instalado tem os grupos antigos — com a checagem por lista, um grupo novo
+     nunca era criado, e a aba dele simplesmente não funcionava. Aconteceu com
+     a nutrição. Vocabulário (lugares, itens) continua só na instalação nova,
+     pra não ressuscitar o que ela apagou de propósito. */
+  for(var i = 0; i < GRUPOS_SEMENTE.length; i++){
+    var gid = "grupo-" + GRUPOS_SEMENTE[i].chave;
+    var existe = false;
+    S.grupos.forEach(function(x){ if(x.id === gid) existe = true; });
+    if(existe) continue;
+    var g = Object.assign({id:gid}, GRUPOS_SEMENTE[i]);
+    await put("grupos", g); S.grupos.push(g);
   }
   if(!S.lugares.length){
     for(var j = 0; j < LUGARES_SEMENTE.length; j++){
@@ -1885,11 +1899,44 @@ function telaConfirmar(texto, rascunhos){
         c.appendChild(blocoBotoes("לאיזו קבוצה?",
           S.grupos.map(function(gg){ return {rotulo:gg.nome, v:gg}; }),
           function(o){
+            /* Nutrição e compras não são só "mudar o rótulo": a fala precisa
+               ser relida com o parser daquele grupo, senão "חצי אבוקדו ופרוסת
+               לחם" viraria UMA anotação de texto em vez de dois alimentos com
+               porção e valores. */
+            var comp = o.v.comportamento;
+            if(comp === "nutricao" || comp === "lista"){
+              var tk2 = tokenizar(texto);
+              var novos = (comp === "nutricao")
+                ? lerComidas(tk2.toks, tk2.orig, 0, S.alimentos)
+                : lerCompras(tk2.toks, tk2.orig, 0, S.itens);
+              if(novos.length){
+                rascunhos.length = 0;
+                novos.forEach(function(x){
+                  if(comp === "nutricao"){
+                    var al = x.alimento;
+                    rascunhos.push({tipo:"comida", grupoId:o.v.id, item:x.item,
+                      alimentoId:x.alimentoId, gramas:x.gramas,
+                      kcal: al ? Math.round(al.kcal * x.gramas / 100) : null,
+                      prot: al ? Math.round(al.prot * x.gramas / 100 * 10)/10 : null,
+                      carb: al ? Math.round(al.carb * x.gramas / 100 * 10)/10 : null,
+                      gord: al ? Math.round((al.gord||0) * x.gramas / 100 * 10)/10 : null,
+                      refeicao: refeicaoDe(nowHM()), data: todayISO(), fala: texto});
+                  } else {
+                    rascunhos.push({tipo:"compra", grupoId:o.v.id, item:x.item,
+                      qtd:x.qtd, unidade:x.unidade, comprado:false, fala:texto});
+                  }
+                });
+                desenhar();
+                return;
+              }
+            }
             d.grupoId = o.v.id;
-            d.tipo = (o.v.comportamento === "lista") ? "compra"
-                   : (o.v.comportamento === "financeiro") ? "gasto"
-                   : (o.v.comportamento === "agenda") ? "compromisso" : "nota";
-            if(d.tipo === "compra" && !d.item) d.item = d.texto;
+            d.tipo = comp === "lista" ? "compra"
+                   : comp === "financeiro" ? "gasto"
+                   : comp === "agenda" ? "compromisso"
+                   : comp === "nutricao" ? "comida" : "nota";
+            if((d.tipo === "compra" || d.tipo === "comida") && !d.item) d.item = d.texto;
+            if(d.tipo === "comida" && !d.refeicao) d.refeicao = refeicaoDe(nowHM());
             d._ensinarGrupo = o.v;
             desenhar();
           }));
