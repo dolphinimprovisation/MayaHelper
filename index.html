@@ -155,7 +155,7 @@ main{padding:0 18px 20px; max-width:620px; margin:0 auto}
   -webkit-mask:var(--p-kilim) repeat-x center; mask:var(--p-kilim) repeat-x center;
 }
 /* losango de acento antes do rótulo da seção */
-.tecido span::before{
+.tecido span:first-child::before{
   content:""; display:inline-block; width:7px; height:7px; margin-inline-end:7px;
   background:var(--terracota); transform:rotate(45deg); vertical-align:middle; opacity:.75;
 }
@@ -274,9 +274,10 @@ main{padding:0 18px 20px; max-width:620px; margin:0 auto}
 nav{position:fixed; inset-inline:0; bottom:0; z-index:30; display:flex;
   background:var(--pergaminho); border-top:1px solid var(--linha);
   padding:8px 4px calc(8px + env(safe-area-inset-bottom))}
-nav button{flex:1; background:none; border:none; cursor:pointer; padding:5px 2px;
+nav button{flex:1; background:none; border:none; cursor:pointer; padding:5px 1px;
   display:flex; flex-direction:column; align-items:center; gap:3px;
-  font-size:11.5px; color:var(--tinta2)}
+  font-size:11px; color:var(--tinta2); min-width:0; white-space:nowrap}
+@media(max-width:360px){ nav button{font-size:10px} }
 nav button.on{color:var(--terracota)}
 nav .pt{width:16px; height:8px; border-radius:8px 8px 0 0; background:currentColor;
   opacity:0; transition:opacity .18s}
@@ -975,6 +976,140 @@ function lerCompras(toks, orig, iInicio, conhecidos){
 }
 
 /* ==========================================================================
+   NUTRIÇÃO
+   O mesmo problema da lista de compras: uma frase vira vários registros, e o
+   vocabulário é fechado — as pessoas comem quase sempre as mesmas 80 coisas.
+   Por isso aqui o casamento por semelhança também vale inteiro.
+
+   HONESTIDADE QUE ESTÁ NA TELA: isto é ESTIMATIVA, não medida. "אכלתי סלט"
+   não diz o tamanho nem quanto azeite tinha. Nenhum app acerta isso sem a
+   pessoa pesar a comida.
+   ========================================================================== */
+
+var GATILHO_COMIDA = ["\u05D0\u05DB\u05DC\u05EA\u05D9","\u05D0\u05DB\u05DC\u05E0\u05D5",
+  "\u05E9\u05EA\u05D9\u05EA\u05D9","\u05E9\u05EA\u05D9\u05E0\u05D5",
+  "\u05D0\u05DB\u05DC\u05D4","\u05D0\u05E8\u05D5\u05D7\u05EA","\u05D8\u05E2\u05DE\u05EA\u05D9"];
+
+/* porções faladas, em gramas. Genéricas: quando o alimento tem porção própria
+   (uma fatia de pão, um ovo), a dele ganha. */
+/* Duas classes, e a diferença importa:
+   PRECISA — פרוסה, כף, כוס: a medida vale por si, e o alimento não muda isso.
+   VAGA    — צלחת, קערה: "um prato de arroz" é uma PORÇÃO de arroz, não 300 g
+             de arroz. Quando o alimento é conhecido, a porção dele ganha. */
+var PORCOES = [
+  {t:"\u05E6\u05DC\u05D7\u05EA", g:300, vaga:true},   /* צלחת  prato */
+  {t:"\u05E7\u05E2\u05E8\u05D4", g:250, vaga:true},   /* קערה  tigela */
+  {t:"\u05DB\u05D5\u05E1", g:240},          /* כוס   copo */
+  {t:"\u05E4\u05E8\u05D5\u05E1\u05D4", g:30},   /* פרוסה fatia */
+  {t:"\u05E4\u05E8\u05D5\u05E1\u05D5\u05EA", g:30},
+  {t:"\u05DB\u05E3", g:15},                  /* כף    colher */
+  {t:"\u05DB\u05E4\u05D5\u05EA", g:15},
+  {t:"\u05DB\u05E4\u05D9\u05EA", g:5},     /* כפית  colherinha */
+  {t:"\u05D7\u05EA\u05D9\u05DB\u05D4", g:80, vaga:true},   /* חתיכה pedaço */
+  {t:"\u05D9\u05D7\u05D9\u05D3\u05D4", g:0, vaga:true},    /* יחידה = a porção do próprio alimento */
+  {t:"\u05D1\u05E7\u05D1\u05D5\u05E7", g:500},  /* בקבוק garrafa */
+  {t:"\u05DB\u05D3\u05D5\u05E8", g:60}     /* כדור  bola (sorvete) */
+];
+var PESOS = [
+  {t:"\u05D2\u05E8\u05DD", g:1},            /* גרם */
+  {t:"\u05D2\u05E8", g:1},
+  {t:"\u05E7\u05D9\u05DC\u05D5", g:1000},  /* קילו */
+  {t:"\u05DE\u05DC", g:1},                   /* מל */
+  {t:"\u05DC\u05D9\u05D8\u05E8", g:1000}   /* ליטר */
+];
+/* palavras de ligação que sobram no meio e não fazem parte do nome */
+var LIGA_COMIDA = ["\u05E2\u05DD","\u05E9\u05DC","\u05D0\u05EA","\u05D5\u05E2\u05D5\u05D3",
+  "\u05D2\u05DD","\u05D5\u05D2\u05DD"];
+
+GATILHO_COMIDA = normLista(GATILHO_COMIDA);
+LIGA_COMIDA = normLista(LIGA_COMIDA);
+PORCOES = PORCOES.map(function(p){ return {t:normHe(p.t), g:p.g, vaga:!!p.vaga}; });
+PESOS   = PESOS.map(function(p){ return {t:normHe(p.t), g:p.g}; });
+
+function tiraLigacoes(parte){
+  var out = parte.slice();
+  function ehLiga(t){
+    var achou = false;
+    LIGA_COMIDA.forEach(function(l){ if(formas(t).indexOf(l) >= 0) achou = true; });
+    return achou;
+  }
+  while(out.length && ehLiga(out[0].t)) out.shift();
+  while(out.length && ehLiga(out[out.length-1].t)) out.pop();
+  return out;
+}
+
+/* lê um pedaço: quantidade + porção/peso + alimento */
+function lerItemComida(parte, orig, alimentos){
+  parte = tiraLigacoes(parte);
+  if(!parte.length) return null;
+  var tt = parte.map(function(x){ return x.t; });
+  var qtd = null, corte = 0, gramasUnidade = null, porcaoDita = null;
+
+  if(/^\d+(\.\d+)?$/.test(tt[0] || "")){ qtd = parseFloat(tt[0]); corte = 1; }
+  else if(QTD_COMPRA[tt[0]] !== undefined){ qtd = QTD_COMPRA[tt[0]]; corte = 1; }
+  else if(formas(tt[0] || "").indexOf(MEIO) >= 0){ qtd = 0.5; corte = 1; }
+
+  /* peso explícito manda em tudo: "150 גרם עוף" */
+  PESOS.forEach(function(p){
+    if(gramasUnidade === null && formas(tt[corte] || "").indexOf(p.t) >= 0){
+      gramasUnidade = p.g; porcaoDita = null; corte++;
+    }
+  });
+  if(gramasUnidade === null){
+    PORCOES.forEach(function(p){
+      if(porcaoDita === null && formas(tt[corte] || "").indexOf(p.t) >= 0){
+        porcaoDita = p; corte++;
+      }
+    });
+  }
+
+  var resto = tiraLigacoes(parte.slice(corte));
+  if(!resto.length) return null;
+  var nome = trechoOriginal(orig, resto).replace(/^\u05D5/, "").trim();
+  if(!nome) return null;
+
+  var m = acharNaLista(resto, alimentos || [], 0.74);
+  var al = m ? m.item : null;
+
+  /* quantas gramas foram, afinal */
+  var g;
+  var n = (qtd === null ? 1 : qtd);
+  if(gramasUnidade !== null){
+    g = n * gramasUnidade;                       /* peso dito: manda em tudo */
+  } else if(porcaoDita && porcaoDita.vaga && al && al.porcao){
+    g = n * al.porcao;                           /* "prato de arroz" = uma porção de arroz */
+  } else if(porcaoDita && porcaoDita.g){
+    g = n * porcaoDita.g;                        /* "duas fatias" = 2 x 30 g */
+  } else if(al && al.porcao){
+    g = n * al.porcao;                           /* só o número: porções do alimento */
+  } else {
+    g = n * 100;                                 /* desconhecido: 100 g e ela corrige */
+  }
+
+  return {item: al ? al.nome : nome, faladoComo: nome, alimentoId: al ? al.id : null,
+          qtd: qtd, gramas: Math.round(g), porcao: porcaoDita ? porcaoDita.t : null,
+          alimento: al};
+}
+
+function lerComidas(toks, orig, iInicio, alimentos){
+  var brutas = partirCompras(toks, iInicio);
+  var partes = [];
+  brutas.forEach(function(p){
+    cortarPorConhecidos(p, alimentos || []).forEach(function(q){ partes.push(q); });
+  });
+  return partes.map(function(p){ return lerItemComida(p, orig, alimentos); }).filter(Boolean);
+}
+
+/* refeição pelo relógio — ela pode trocar na tela de confirmação */
+function refeicaoDe(hora){
+  var h = parseInt(String(hora || "12:00").slice(0, 2), 10);
+  if(h >= 5  && h < 11) return "boker";     /* בוקר */
+  if(h >= 11 && h < 16) return "tsohoraim"; /* צהריים */
+  if(h >= 16 && h < 22) return "erev";      /* ערב */
+  return "nashnush";                        /* נשנוש */
+}
+
+/* ==========================================================================
    O ROTEADOR — em que grupo aquilo vai
    ========================================================================== */
 
@@ -1029,6 +1164,32 @@ function interpretar(fala, ctx){
       return itens.map(function(x){
         return {tipo:"compra", grupoId:gCompras.id, item:x.item, qtd:x.qtd,
                 unidade:x.unidade, comprado:false, fala:fala};
+      });
+    }
+  }
+
+  /* 2. comida — mesmo corte das compras, vocabulário fechado igual */
+  var iComida = -1;
+  for(var ic = 0; ic < tt.length && iComida < 0; ic++){
+    for(var jc = 0; jc < GATILHO_COMIDA.length; jc++)
+      if(bate(ic, GATILHO_COMIDA[jc])){ iComida = ic; break; }
+  }
+  var gNutri = porChave("nutricao") || porComp("nutricao");
+  if(iComida >= 0 && gNutri){
+    var iniC = iComida + 1;
+    while(iniC < tt.length && GATILHO_COMIDA.some(function(g){ return bate(iniC, g); })) iniC++;
+    var comidas = lerComidas(toks, orig, iniC, ctx.alimentos || []);
+    if(comidas.length){
+      var dhc = acharDataHora(toks, hoje);
+      var quando = dhc.data || hoje;
+      return comidas.map(function(x){
+        return {tipo:"comida", grupoId:gNutri.id, item:x.item, faladoComo:x.faladoComo,
+                alimentoId:x.alimentoId, gramas:x.gramas, porcao:x.porcao,
+                kcal: x.alimento ? Math.round(x.alimento.kcal * x.gramas / 100) : null,
+                prot: x.alimento ? Math.round(x.alimento.prot * x.gramas / 100 * 10)/10 : null,
+                carb: x.alimento ? Math.round(x.alimento.carb * x.gramas / 100 * 10)/10 : null,
+                gord: x.alimento ? Math.round((x.alimento.gord||0) * x.gramas / 100 * 10)/10 : null,
+                refeicao: refeicaoDe(agora), data: quando, fala: fala};
       });
     }
   }
@@ -1129,6 +1290,18 @@ var MES_NOME = ["ינואר","פברואר","מרץ",
   "אפריל","מאי","יוני","יולי",
   "אוגוסט","ספטמבר","אוקטובר",
   "נובמבר","דצמבר"];
+var REFEICOES = [
+  {k:"boker",     r:"ארוחת בוקר"},
+  {k:"tsohoraim", r:"ארוחת צהריים"},
+  {k:"erev",      r:"ארוחת ערב"},
+  {k:"nashnush",  r:"נשנושים"}
+];
+function refNome(k){
+  var n = "";
+  REFEICOES.forEach(function(x){ if(x.k === k) n = x.r; });
+  return n || REFEICOES[3].r;
+}
+
 var L = {
   hoje:"היום", amanha:"מחר",
   ontem:"אתמול", semana:"שבוע",
@@ -1172,8 +1345,8 @@ function fmtDaqui(min){
    BANCO
    ========================================================================== */
 var DB_NOME = "maya", DB_VER = 1, _db = null;
-var LOJAS = ["config","grupos","notas","lugares","itens"];
-var S = {config:{id:"app"}, grupos:[], notas:[], lugares:[], itens:[]};
+var LOJAS = ["config","grupos","notas","lugares","itens","alimentos"];
+var S = {config:{id:"app"}, grupos:[], notas:[], lugares:[], itens:[], alimentos:[]};
 
 function abrirDB(){
   return new Promise(function(ok, err){
@@ -1228,7 +1401,9 @@ var GRUPOS_SEMENTE = [
   {chave:"dinheiro", nome:"כספים",        comportamento:"financeiro", ordem:4,
    apelidos:["כסף","הוצאה","הכנסה"]},
   {chave:"compras",  nome:"קניות",        comportamento:"lista",      ordem:5,
-   apelidos:["רשימה","סופר"]}
+   apelidos:["רשימה","סופר"]},
+  {chave:"nutricao", nome:"תזונה",       comportamento:"nutricao",   ordem:6,
+   apelidos:["אוכל","קלוריות","אכלתי"]}
 ];
 
 /* lugares e pessoas do financeiro — ela vai ensinar o resto com o uso */
@@ -1244,6 +1419,83 @@ var ITENS_SEMENTE = ["חלב","לחם","ביצים","גבינה",
   "קפה","תה","סוכר","אורז","פסטה",
   "שמן","מלח","נייר טואלט",
   "סבון","עוף","דג","שוקולד"];
+
+/* ==========================================================================
+   TABELA DE ALIMENTOS
+   [nome, kcal, proteína, carboidrato, gordura] por 100 g, e a PORÇÃO típica
+   em gramas — é ela que transforma "פרוסת לחם" em 30 g sem ninguém pesar.
+
+   Estes números vêm de tabela, não da comida dela: uma salada tem o azeite
+   que quem fez colocou. Por isso a tela diz, sem rodeio, que é ESTIMATIVA.
+   ========================================================================== */
+var ALIMENTOS_SEMENTE = [
+  ["\u05D7\u05DC\u05D1",61,3.2,4.7,3.3,240], ["\u05D7\u05DC\u05D1 \u05D3\u05DC \u05E9\u05D5\u05DE\u05DF",42,3.4,5,1,240],
+  ["\u05D9\u05D5\u05D2\u05D5\u05E8\u05D8",61,3.5,4.7,3.3,150], ["\u05D9\u05D5\u05D2\u05D5\u05E8\u05D8 \u05D9\u05D5\u05D5\u05E0\u05D9",97,9,3.6,5,150],
+  ["\u05E7\u05D5\u05D8\u05D2\u05F3",98,11,3.4,5,100], ["\u05D2\u05D1\u05D9\u05E0\u05D4 \u05DC\u05D1\u05E0\u05D4",90,9,3.5,5,30],
+  ["\u05D2\u05D1\u05D9\u05E0\u05D4 \u05E6\u05D4\u05D5\u05D1\u05D4",350,25,2,27,30], ["\u05D2\u05D1\u05D9\u05E0\u05EA \u05E9\u05DE\u05E0\u05EA",342,6,4,34,30],
+  ["\u05DC\u05D1\u05E0\u05D4",145,6,4,12,50], ["\u05D7\u05DE\u05D0\u05D4",717,0.9,0.1,81,10],
+  ["\u05E9\u05DE\u05E0\u05EA \u05D7\u05DE\u05D5\u05E6\u05D4",198,2.4,3,20,30], ["\u05DE\u05E9\u05E7\u05D4 \u05E9\u05E7\u05D3\u05D9\u05DD",15,0.5,0.6,1.1,240],
+  ["\u05D1\u05D9\u05E6\u05D4",155,13,1.1,11,50], ["\u05D7\u05D1\u05D9\u05EA\u05D4",196,13,1,15,100],
+  ["\u05DC\u05D7\u05DD",265,9,49,3.2,30], ["\u05DC\u05D7\u05DD \u05DE\u05DC\u05D0",247,13,41,3.4,35],
+  ["\u05E4\u05D9\u05EA\u05D4",275,9,55,1.2,60], ["\u05DC\u05D7\u05DE\u05E0\u05D9\u05D9\u05D4",280,9,51,4,60],
+  ["\u05D8\u05D5\u05E1\u05D8",290,10,50,5,30], ["\u05E7\u05E8\u05E7\u05E8",420,9,70,12,10],
+  ["\u05DE\u05E6\u05D4",380,10,79,1.4,30], ["\u05D1\u05D2\u05D8",270,9,52,2,60],
+  ["\u05E7\u05E8\u05D5\u05D0\u05E1\u05D5\u05DF",406,8,46,21,60], ["\u05D1\u05D5\u05E8\u05E7\u05E1",350,7,30,22,90],
+  ["\u05DE\u05DC\u05D5\u05D5\u05D7",380,6,40,22,100], ["\u05D2\u05F3\u05D7\u05E0\u05D5\u05DF",350,7,45,16,100],
+  ["\u05D0\u05D5\u05E8\u05D6",130,2.7,28,0.3,150], ["\u05D0\u05D5\u05E8\u05D6 \u05DE\u05DC\u05D0",123,2.7,26,1,150],
+  ["\u05E4\u05E1\u05D8\u05D4",131,5,25,1.1,180], ["\u05E7\u05D5\u05E1\u05E7\u05D5\u05E1",112,3.8,23,0.2,150],
+  ["\u05D1\u05D5\u05E8\u05D2\u05D5\u05DC",83,3,19,0.2,150], ["\u05E7\u05D9\u05E0\u05D5\u05D0\u05D4",120,4.4,21,1.9,150],
+  ["\u05E9\u05D9\u05D1\u05D5\u05DC\u05EA \u05E9\u05D5\u05E2\u05DC",68,2.4,12,1.4,200], ["\u05D2\u05E8\u05E0\u05D5\u05DC\u05D4",471,10,64,20,50],
+  ["\u05E2\u05D2\u05D1\u05E0\u05D9\u05D9\u05D4",18,0.9,3.9,0.2,120], ["\u05DE\u05DC\u05E4\u05E4\u05D5\u05DF",15,0.7,3.6,0.1,100],
+  ["\u05D2\u05D6\u05E8",41,0.9,10,0.2,80], ["\u05D1\u05E6\u05DC",40,1.1,9,0.1,80],
+  ["\u05E4\u05DC\u05E4\u05DC",31,1,6,0.3,120], ["\u05D7\u05E1\u05D4",15,1.4,2.9,0.2,50],
+  ["\u05DB\u05E8\u05D5\u05D1",25,1.3,6,0.1,80], ["\u05D1\u05E8\u05D5\u05E7\u05D5\u05DC\u05D9",34,2.8,7,0.4,100],
+  ["\u05DB\u05E8\u05D5\u05D1\u05D9\u05EA",25,1.9,5,0.3,100], ["\u05E7\u05D9\u05E9\u05D5\u05D0",17,1.2,3.1,0.3,120],
+  ["\u05D7\u05E6\u05D9\u05DC",25,1,6,0.2,120], ["\u05EA\u05E4\u05D5\u05D7 \u05D0\u05D3\u05DE\u05D4",77,2,17,0.1,150],
+  ["\u05D1\u05D8\u05D8\u05D4",86,1.6,20,0.1,150], ["\u05EA\u05D9\u05E8\u05E1",86,3.2,19,1.2,100],
+  ["\u05D0\u05E4\u05D5\u05E0\u05D4",81,5.4,14,0.4,100], ["\u05D6\u05D9\u05EA\u05D9\u05DD",115,0.8,6,11,30],
+  ["\u05D0\u05D1\u05D5\u05E7\u05D3\u05D5",160,2,9,15,100], ["\u05E4\u05D8\u05E8\u05D5\u05D6\u05D9\u05DC\u05D9\u05D4",36,3,6,0.8,10],
+  ["\u05EA\u05E4\u05D5\u05D7",52,0.3,14,0.2,150], ["\u05D1\u05E0\u05E0\u05D4",89,1.1,23,0.3,120],
+  ["\u05EA\u05E4\u05D5\u05D6",47,0.9,12,0.1,150], ["\u05D0\u05D1\u05D8\u05D9\u05D7",30,0.6,8,0.2,200],
+  ["\u05DE\u05DC\u05D5\u05DF",34,0.8,8,0.2,200], ["\u05E2\u05E0\u05D1\u05D9\u05DD",69,0.7,18,0.2,100],
+  ["\u05EA\u05D5\u05EA",32,0.7,8,0.3,100], ["\u05D0\u05D2\u05E1",57,0.4,15,0.1,150],
+  ["\u05D0\u05E4\u05E8\u05E1\u05E7",39,0.9,10,0.3,130], ["\u05E9\u05D6\u05D9\u05E3",46,0.7,11,0.3,60],
+  ["\u05DE\u05E0\u05D2\u05D5",60,0.8,15,0.4,150], ["\u05E7\u05D9\u05D5\u05D5\u05D9",61,1.1,15,0.5,75],
+  ["\u05E8\u05D9\u05DE\u05D5\u05DF",83,1.7,19,1.2,150], ["\u05EA\u05DE\u05E8",282,2.5,75,0.4,20],
+  ["\u05EA\u05D0\u05E0\u05D4",74,0.8,19,0.3,50], ["\u05D0\u05E9\u05DB\u05D5\u05DC\u05D9\u05EA",42,0.8,11,0.1,200],
+  ["\u05E7\u05DC\u05DE\u05E0\u05D8\u05D9\u05E0\u05D4",53,0.8,13,0.3,80],
+  ["\u05D7\u05D6\u05D4 \u05E2\u05D5\u05E3",165,31,0,3.6,150], ["\u05E2\u05D5\u05E3",190,27,0,9,150],
+  ["\u05E9\u05E0\u05D9\u05E6\u05DC",290,18,20,15,120], ["\u05D1\u05E9\u05E8",250,26,0,15,150],
+  ["\u05D4\u05DE\u05D1\u05D5\u05E8\u05D2\u05E8",254,17,8,17,120], ["\u05D4\u05D5\u05D3\u05D5",135,29,0,1.5,150],
+  ["\u05DB\u05D1\u05E9",294,25,0,21,150], ["\u05E1\u05DC\u05DE\u05D5\u05DF",208,20,0,13,150],
+  ["\u05D8\u05D5\u05E0\u05D4",116,26,0,1,100], ["\u05D8\u05D5\u05E0\u05D4 \u05D1\u05E9\u05DE\u05DF",198,29,0,8,100],
+  ["\u05D3\u05D2",130,22,0,4,150], ["\u05E0\u05E7\u05E0\u05D9\u05E7\u05D9\u05D9\u05D4",300,12,2,27,50],
+  ["\u05E9\u05D5\u05D5\u05D0\u05E8\u05DE\u05D4",260,20,3,19,150], ["\u05E7\u05D1\u05D1",250,17,4,18,100],
+  ["\u05D7\u05D5\u05DE\u05D5\u05E1",166,8,14,10,60], ["\u05D8\u05D7\u05D9\u05E0\u05D4",595,17,21,54,20],
+  ["\u05E4\u05DC\u05D0\u05E4\u05DC",333,13,32,18,20], ["\u05E2\u05D3\u05E9\u05D9\u05DD",116,9,20,0.4,150],
+  ["\u05E9\u05E2\u05D5\u05E2\u05D9\u05EA",127,8.7,23,0.5,150], ["\u05E4\u05D5\u05DC",110,8,19,0.4,150],
+  ["\u05E9\u05E7\u05D3\u05D9\u05DD",579,21,22,50,25], ["\u05D0\u05D2\u05D5\u05D6\u05D9\u05DD",654,15,14,65,25],
+  ["\u05D1\u05D5\u05D8\u05E0\u05D9\u05DD",567,26,16,49,25], ["\u05E7\u05E9\u05D9\u05D5",553,18,30,44,25],
+  ["\u05E4\u05D9\u05E1\u05D8\u05D5\u05E7",560,20,28,45,25], ["\u05D2\u05E8\u05E2\u05D9\u05E0\u05D9\u05DD",584,21,20,51,25],
+  ["\u05D7\u05DE\u05D0\u05EA \u05D1\u05D5\u05D8\u05E0\u05D9\u05DD",588,25,20,50,20],
+  ["\u05E9\u05DE\u05DF \u05D6\u05D9\u05EA",884,0,0,100,10], ["\u05DE\u05D9\u05D5\u05E0\u05D6",680,1,1,75,15],
+  ["\u05E7\u05D8\u05E9\u05D5\u05E4",101,1.2,26,0.1,15],
+  ["\u05E1\u05DC\u05D8",45,1.2,5,2.5,200], ["\u05E9\u05E7\u05E9\u05D5\u05E7\u05D4",118,6,6,8,250],
+  ["\u05E4\u05D9\u05E6\u05D4",266,11,33,10,120], ["\u05E1\u05E0\u05D3\u05D5\u05D5\u05D9\u05E5",250,12,30,9,150],
+  ["\u05DE\u05E8\u05E7",40,2,5,1.2,250], ["\u05DE\u05E8\u05E7 \u05E2\u05D5\u05E3",45,3,4,1.5,250],
+  ["\u05DC\u05D6\u05E0\u05D9\u05D4",135,8,12,6,250], ["\u05E1\u05D5\u05E9\u05D9",145,6,27,1,150],
+  ["\u05E7\u05E4\u05D4",2,0.1,0,0,200], ["\u05E7\u05E4\u05D4 \u05E2\u05DD \u05D7\u05DC\u05D1",40,2,3,2,200],
+  ["\u05E7\u05E4\u05D4 \u05D4\u05E4\u05D5\u05DA",55,3,4.5,2.8,250], ["\u05EA\u05D4",1,0,0.2,0,200],
+  ["\u05DE\u05D9\u05DD",0,0,0,0,250], ["\u05DE\u05D9\u05E5 \u05EA\u05E4\u05D5\u05D6\u05D9\u05DD",45,0.7,10,0.2,250],
+  ["\u05DE\u05D9\u05E5",48,0.3,12,0.1,250], ["\u05E7\u05D5\u05DC\u05D4",42,0,10.6,0,330],
+  ["\u05D1\u05D9\u05E8\u05D4",43,0.5,3.6,0,330], ["\u05D9\u05D9\u05DF",83,0.1,2.6,0,150],
+  ["\u05E9\u05D5\u05E7\u05D5\u05DC\u05D3",546,5,61,31,25], ["\u05E9\u05D5\u05E7\u05D5\u05DC\u05D3 \u05DE\u05E8\u05D9\u05E8",598,7.8,46,43,25],
+  ["\u05E2\u05D5\u05D2\u05D4",350,5,50,15,80], ["\u05E2\u05D5\u05D2\u05D9\u05D9\u05D4",470,6,65,20,15],
+  ["\u05D2\u05DC\u05D9\u05D3\u05D4",207,3.5,24,11,60], ["\u05D1\u05D9\u05E1\u05E7\u05D5\u05D5\u05D9\u05D8",450,7,70,16,10],
+  ["\u05D3\u05D1\u05E9",304,0.3,82,0,20], ["\u05E1\u05D5\u05DB\u05E8",387,0,100,0,5],
+  ["\u05E8\u05D9\u05D1\u05D4",278,0.4,69,0.1,20], ["\u05D1\u05DE\u05D1\u05D4",550,15,45,35,25],
+  ["\u05D5\u05E4\u05DC",480,5,65,22,30], ["\u05D7\u05DC\u05D1\u05D4",550,12,50,33,30]
+];
 
 async function semear(){
   if(!S.grupos.length){
@@ -1262,6 +1514,14 @@ async function semear(){
     for(var k = 0; k < ITENS_SEMENTE.length; k++){
       var it = {id:"item-" + slug(ITENS_SEMENTE[k]), nome:ITENS_SEMENTE[k], apelidos:[], usos:0};
       await put("itens", it); S.itens.push(it);
+    }
+  }
+  if(!S.alimentos.length){
+    for(var m = 0; m < ALIMENTOS_SEMENTE.length; m++){
+      var a = ALIMENTOS_SEMENTE[m];
+      var al = {id:"alim-" + slug(a[0]), nome:a[0], apelidos:[],
+                kcal:a[1], prot:a[2], carb:a[3], gord:a[4], porcao:a[5]};
+      await put("alimentos", al); S.alimentos.push(al);
     }
   }
 }
@@ -1433,7 +1693,7 @@ function entrada(tipo, valor){
 function confirmar(texto){
   var ctx = {
     hoje: todayISO(), agora: nowHM(), grupos: S.grupos,
-    itensCompra: S.itens, lugares: S.lugares
+    itensCompra: S.itens, lugares: S.lugares, alimentos: S.alimentos
   };
   var rascunhos = interpretar(texto, ctx);
   telaConfirmar(texto, rascunhos);
@@ -1500,6 +1760,57 @@ function telaConfirmar(texto, rascunhos){
         ii.oninput = function(){ d.item = ii.value; };
         linha.appendChild(iq); linha.appendChild(ii);
         c.appendChild(campo(g ? g.nome : "", linha));
+      } else if(d.tipo === "comida"){
+        var lc = el("div");
+        lc.style.display = "flex"; lc.style.gap = "8px";
+        var ig = entrada("number", d.gramas == null ? "" : d.gramas);
+        ig.style.maxWidth = "92px";
+        var inome = entrada("text", d.item);
+        inome.oninput = function(){ d.item = inome.value; };
+        lc.appendChild(ig); lc.appendChild(inome);
+        c.appendChild(campo("גרם", lc));
+
+        var lm = el("div");
+        lm.style.display = "flex"; lm.style.gap = "8px";
+        var ik = entrada("number", d.kcal == null ? "" : d.kcal);
+        ik.placeholder = "קלוריות";
+        var ip = entrada("number", d.prot == null ? "" : d.prot); ip.step = "0.1";
+        ip.placeholder = "חלבון";
+        var ib = entrada("number", d.carb == null ? "" : d.carb); ib.step = "0.1";
+        ib.placeholder = "פחמימה";
+        [ik, ip, ib].forEach(function(x){ x.style.minWidth = "0"; });
+        lm.appendChild(ik); lm.appendChild(ip); lm.appendChild(ib);
+        ik.oninput = function(){ d.kcal = ik.value === "" ? null : parseFloat(ik.value); d._mao = true; };
+        ip.oninput = function(){ d.prot = ip.value === "" ? null : parseFloat(ip.value); d._mao = true; };
+        ib.oninput = function(){ d.carb = ib.value === "" ? null : parseFloat(ib.value); d._mao = true; };
+
+        /* mudar as gramas recalcula os valores — mas só enquanto ela não os
+           tiver digitado à mão, senão o app apagaria o que ela corrigiu */
+        ig.oninput = function(){
+          var g = ig.value === "" ? null : parseFloat(ig.value);
+          var al = null;
+          S.alimentos.forEach(function(a){ if(a.id === d.alimentoId) al = a; });
+          if(al && g && !d._mao){
+            d.kcal = Math.round(al.kcal * g / 100);
+            d.prot = Math.round(al.prot * g / 100 * 10) / 10;
+            d.carb = Math.round(al.carb * g / 100 * 10) / 10;
+            d.gord = Math.round((al.gord || 0) * g / 100 * 10) / 10;
+            ik.value = d.kcal; ip.value = d.prot; ib.value = d.carb;
+          }
+          d.gramas = g;
+        };
+        c.appendChild(campo("ערכים", lm,
+          d.alimentoId ? "מהטבלה — הערכה, לא מדידה"
+                       : "לא מכיר את זה. אם תמלאי, אזכור להבא"));
+
+        var chr = el("div", "chips");
+        REFEICOES.forEach(function(rf){
+          var ch = el("button", "chip" + (d.refeicao === rf.k ? " on" : ""), esc(rf.r));
+          ch.onclick = function(){ d.refeicao = rf.k; desenhar(); };
+          chr.appendChild(ch);
+        });
+        c.appendChild(chr);
+
       } else if(d.tipo === "gasto"){
         var lv = el("div");
         lv.style.display = "flex"; lv.style.gap = "8px";
@@ -1616,6 +1927,9 @@ function telaConfirmar(texto, rascunhos){
         if(!d.direcao) return cobrar(i, "יצא או נכנס? בחרי.");
       }
       if(d.tipo === "compra" && !String(d.item || "").trim()) return cobrar(i, "חסר שם למוצר.");
+      /* comida sem valores PODE ser salva: melhor registrar sem número do que
+         inventar um. O total do dia avisa quantos itens ficaram sem valor. */
+      if(d.tipo === "comida" && !String(d.item || "").trim()) return cobrar(i, "חסר שם למאכל.");
       if(d.tipo === "nota" && !String(d.texto || "").trim()) return cobrar(i, "אין טקסט.");
       if(d.tipo === "compromisso" && !d.data) return cobrar(i, "חסר תאריך.");
     }
@@ -1630,6 +1944,7 @@ function telaConfirmar(texto, rascunhos){
         await lembrarItem(r.item);
       }
       if(r.tipo === "gasto" && r.onde) await lembrarLugar(r.onde);
+      if(r.tipo === "comida") await lembrarAlimento(r);
       await put("notas", r);
       S.notas.push(r);
     }
@@ -1655,6 +1970,26 @@ async function lembrarItem(nome){
   var novo = {id:"item-" + slug(nome), nome:nome, apelidos:[], usos:1};
   await put("itens", novo); S.itens.push(novo);
 }
+/* alimento que eu não conhecia e ela informou: guarda por 100 g, e nunca
+   mais pergunta. É o "Ensinar" da nutrição. */
+async function lembrarAlimento(r){
+  if(r.alimentoId || !r.gramas || r.kcal == null) return;
+  var nome = String(r.item || "").trim();
+  if(!nome) return;
+  var f = r.gramas ? (100 / r.gramas) : 1;
+  var novo = {
+    id:"alim-" + slug(nome), nome:nome, apelidos:[],
+    kcal: Math.round((r.kcal || 0) * f),
+    prot: Math.round((r.prot || 0) * f * 10) / 10,
+    carb: Math.round((r.carb || 0) * f * 10) / 10,
+    gord: Math.round((r.gord || 0) * f * 10) / 10,
+    porcao: r.gramas
+  };
+  await put("alimentos", novo);
+  S.alimentos = S.alimentos.filter(function(a){ return a.id !== novo.id; });
+  S.alimentos.push(novo);
+}
+
 async function lembrarLugar(nome){
   nome = String(nome || "").trim();
   if(!nome || nome.length < 2) return;
@@ -2049,6 +2384,119 @@ function mesSomar(mes, n){
 }
 
 /* ---------- עוד ---------- */
+/* ---------- תזונה: o dia ---------- */
+var SVG_MACA = '<svg width="32" height="32" viewBox="0 0 34 34" fill="none" stroke="var(--salvia)" stroke-width="1.1" stroke-linecap="round"><path d="M17 11c-5-3-11 0-11 7 0 6 4 13 7 13 1.6 0 2.4-.8 4-.8s2.4.8 4 .8c3 0 7-7 7-13 0-7-6-10-11-7z"/><path d="M17 11V6M17 6c3 0 4.5-1.6 4.5-3.5C19 2.5 17 4 17 6z"/></svg>';
+
+function telaNutricao(){
+  var g = grupoChave("nutricao");
+  var dia = S.config.diaNutri || todayISO();
+  cabecalho(g ? g.nome : "", fmtDia(dia), SVG_MACA);
+  var v = el("div");
+
+  /* navegação por dia. Em RTL, voltar fica à direita e avançar à esquerda. */
+  var nav = el("div", "mesnav");
+  var bAnt = el("button"); bAnt.innerHTML = "\u203A";
+  bAnt.onclick = function(){ S.config.diaNutri = somarDias(dia, -1); render(); };
+  var bProx = el("button"); bProx.innerHTML = "\u2039";
+  bProx.onclick = function(){ S.config.diaNutri = somarDias(dia, 1); render(); };
+  var rot = el("div", "serif", esc(fmtDia(dia)));
+  rot.style.fontSize = "18px";
+  nav.appendChild(bAnt); nav.appendChild(rot); nav.appendChild(bProx);
+  v.appendChild(nav);
+
+  var doDia = S.notas.filter(function(n){ return n.tipo === "comida" && n.data === dia; });
+  var kcal = 0, prot = 0, carb = 0, semValor = 0;
+  doDia.forEach(function(n){
+    if(n.kcal == null){ semValor++; return; }
+    kcal += n.kcal || 0; prot += n.prot || 0; carb += n.carb || 0;
+  });
+  prot = Math.round(prot); carb = Math.round(carb); kcal = Math.round(kcal);
+
+  var tiles = el("div", "tiles");
+  tiles.innerHTML =
+    '<div class="tile"><div class="r">\u05E4\u05D7\u05DE\u05D9\u05DE\u05D5\u05EA</div><div class="v serif num">' + carb + ' \u05D2\u05F3</div></div>' +
+    '<div class="tile saldo"><div class="r">\u05E7\u05DC\u05D5\u05E8\u05D9\u05D5\u05EA</div><div class="v serif num">' + kcal + '</div></div>' +
+    '<div class="tile"><div class="r">\u05D7\u05DC\u05D1\u05D5\u05DF</div><div class="v serif num">' + prot + ' \u05D2\u05F3</div></div>';
+  v.appendChild(tiles);
+
+  /* metas: entram desligadas, e quando ligadas não repreendem ninguém —
+     sem vermelho, sem "passou do limite". Só mostram onde ela está. */
+  var m = S.config.metas;
+  if(m && (m.kcal || m.prot || m.carb)){
+    [["\u05E7\u05DC\u05D5\u05E8\u05D9\u05D5\u05EA", kcal, m.kcal],
+     ["\u05D7\u05DC\u05D1\u05D5\u05DF", prot, m.prot],
+     ["\u05E4\u05D7\u05DE\u05D9\u05DE\u05D5\u05EA", carb, m.carb]].forEach(function(x){
+      if(!x[2]) return;
+      var bb = el("div", "barra");
+      bb.innerHTML = '<div class="l"><span>' + esc(x[0]) + '</span><b class="num">' +
+        x[1] + " / " + x[2] + '</b></div><div class="g"><i style="width:' +
+        Math.min(100, Math.round(x[1] / x[2] * 100)) + '%"></i></div>';
+      v.appendChild(bb);
+    });
+  }
+
+  v.appendChild(blocoMic());
+
+  if(semValor){
+    var av = el("div", "vazio");
+    av.style.padding = "4px 10px";
+    av.textContent = "\u05D5\u05E2\u05D5\u05D3 " + semValor + " \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05DC\u05D9 \u05E2\u05E8\u05DB\u05D9\u05DD";
+    v.appendChild(av);
+  }
+
+  if(!doDia.length){
+    v.appendChild(el("div", "vazio", "\u05E2\u05D5\u05D3 \u05DC\u05D0 \u05E8\u05E9\u05DE\u05EA \u05DB\u05DC\u05D5\u05DD \u05D4\u05D9\u05D5\u05DD"));
+  } else {
+    REFEICOES.forEach(function(rf){
+      var lista = doDia.filter(function(n){ return (n.refeicao || "nashnush") === rf.k; });
+      if(!lista.length) return;
+      var soma = 0;
+      lista.forEach(function(n){ soma += (n.kcal || 0); });
+      v.appendChild(el("div", "tecido",
+        "<span>" + esc(rf.r) + "</span><i></i><span class=\"num\">" + Math.round(soma) + "</span>"));
+      lista.forEach(function(n){
+        var b = el("button", "item");
+        b.appendChild(el("div", "p"));
+        b.appendChild(el("div", "t", esc(n.item) +
+          '<small class="num">' + esc((n.gramas || "?") + " \u05D2\u05F3") + "</small>"));
+        b.appendChild(el("div", "h num", n.kcal == null ? "?" : Math.round(n.kcal)));
+        b.onclick = function(){ verNota(n); };
+        v.appendChild(b);
+      });
+    });
+  }
+
+  /* média da semana: sozinha, uma diária diz pouco */
+  var dias = {}, n7 = 0;
+  for(var i = 0; i < 7; i++){
+    var d7 = somarDias(dia, -i);
+    var tot = 0, tem = false;
+    S.notas.forEach(function(n){
+      if(n.tipo === "comida" && n.data === d7 && n.kcal != null){ tot += n.kcal; tem = true; }
+    });
+    if(tem){ dias[d7] = tot; n7++; }
+  }
+  if(n7 > 1){
+    var soma7 = 0;
+    Object.keys(dias).forEach(function(k){ soma7 += dias[k]; });
+    v.appendChild(el("div", "tecido", "<span>\u05DE\u05DE\u05D5\u05E6\u05E2 \u05E9\u05D1\u05D5\u05E2\u05D9</span><i></i>"));
+    var c7 = el("div", "card");
+    c7.appendChild(el("div", "serif num", Math.round(soma7 / n7) +
+      " \u05E7\u05DC\u05D5\u05E8\u05D9\u05D5\u05EA \u05DC\u05D9\u05D5\u05DD"));
+    c7.appendChild(el("div", "dica", "\u05E2\u05DC \u05E4\u05E0\u05D9 " + n7 + " \u05D9\u05DE\u05D9\u05DD \u05E9\u05E0\u05E8\u05E9\u05DE\u05D5"));
+    v.appendChild(c7);
+  }
+
+  /* a honestidade fica na tela, não só na conversa */
+  var nota = el("div", "dica");
+  nota.style.marginTop = "16px";
+  nota.style.textAlign = "center";
+  nota.innerHTML = "\u05D4\u05DE\u05E1\u05E4\u05E8\u05D9\u05DD \u05D4\u05DD <b>\u05D4\u05E2\u05E8\u05DB\u05D4</b> \u05DE\u05D8\u05D1\u05DC\u05D4, \u05DC\u05D0 \u05DE\u05D3\u05D9\u05D3\u05D4";
+  v.appendChild(nota);
+
+  return v;
+}
+
 function telaMais(){
   cabecalho("עוד", "", "");
   var v = el("div");
@@ -2076,6 +2524,43 @@ function telaMais(){
   c3.appendChild(el("p", null,
     "האפליקציה מראה מה קרוב, אבל <b>לא מצלצלת</b> כשהיא סגורה. זה יגיע בשלב הבא."));
   v.appendChild(c3);
+
+  /* Metas entram DESLIGADAS e, quando ligadas, não repreendem: sem vermelho,
+     sem "passou do limite". Contador que repreende empurra muita gente pra um
+     lugar ruim, e não é o que este app é. */
+  var cm = el("div", "card");
+  cm.appendChild(el("h3", "serif", "יעדים יומיים"));
+  var mt = S.config.metas || {};
+  var lm = el("div");
+  lm.style.display = "flex"; lm.style.gap = "8px";
+  var mk = entrada("number", mt.kcal || ""); mk.placeholder = "קלוריות";
+  var mp = entrada("number", mt.prot || ""); mp.placeholder = "חלבון";
+  var mc = entrada("number", mt.carb || ""); mc.placeholder = "פחמימות";
+  [mk, mp, mc].forEach(function(x){ x.style.minWidth = "0"; });
+  lm.appendChild(mk); lm.appendChild(mp); lm.appendChild(mc);
+  cm.appendChild(lm);
+  var lb2 = el("div", "linha-btn");
+  lb2.style.marginTop = "10px";
+  lb2.appendChild(botao("שמירה", "pri", async function(){
+    await salvarCfg({metas:{kcal:parseFloat(mk.value) || 0,
+                            prot:parseFloat(mp.value) || 0,
+                            carb:parseFloat(mc.value) || 0}});
+    render(); toast("נשמר");
+  }));
+  lb2.appendChild(botao("בלי יעדים", "", async function(){
+    await salvarCfg({metas:null}); render(); toast("כבוי");
+  }));
+  cm.appendChild(lb2);
+  cm.appendChild(el("div", "dica",
+    "ריק = בלי יעד. האפליקציה לא מתריעה ולא צובעת באדום — רק מראה איפה את."));
+  v.appendChild(cm);
+
+  var cn = el("div", "card");
+  cn.appendChild(el("h3", "serif", "על התזונה"));
+  cn.appendChild(el("p", null,
+    "המספרים באים מטבלה, לא מהאוכל שלך. סלט תלוי בכמה שמן שמו בו. " +
+    "זו <b>הערכה</b> — טובה למגמה לאורך שבוע, לא למדידה מדויקת."));
+  v.appendChild(cn);
 
   var c4 = el("div", "card");
   c4.appendChild(el("h3", "serif", "גיבוי"));
@@ -2122,6 +2607,18 @@ function verNota(n){
     var idd = entrada("date", n.data); w.appendChild(campo("מתי", idd));
     abrirFolha(g ? g.nome : "", w, [rodapeApagar(n), botao("שמירה", "pri", async function(){
       n.valor = parseFloat(iv.value); n.onde = io.value; n.data = idd.value;
+      await put("notas", n); fecharFolha(); render(); toast("עודכן");
+    })]);
+    return;
+  }
+  if(n.tipo === "comida"){
+    var inm = entrada("text", n.item); w.appendChild(campo("מה", inm));
+    var igr = entrada("number", n.gramas); w.appendChild(campo("גרם", igr));
+    var ikc = entrada("number", n.kcal == null ? "" : n.kcal);
+    w.appendChild(campo("קלוריות", ikc));
+    abrirFolha(g ? g.nome : "", w, [rodapeApagar(n), botao("שמירה", "pri", async function(){
+      n.item = inm.value; n.gramas = parseFloat(igr.value) || null;
+      n.kcal = ikc.value === "" ? null : parseFloat(ikc.value);
       await put("notas", n); fecharFolha(); render(); toast("עודכן");
     })]);
     return;
@@ -2190,9 +2687,10 @@ function aplicarTema(){
    ========================================================================== */
 var ABAS = [
   {k:"hoje",    r:"היום"},
-  {k:"notas",   r:"רשומות"},
+  {k:"nutricao",r:"תזונה"},
   {k:"compras", r:"קניות"},
   {k:"dinheiro",r:"כספים"},
+  {k:"notas",   r:"רשומות"},
   {k:"mais",    r:"עוד"}
 ];
 function desenharNav(){
@@ -2213,6 +2711,7 @@ function render(){
   v.innerHTML = "";
   var tela =
     aba === "notas"    ? telaNotas() :
+    aba === "nutricao" ? telaNutricao() :
     aba === "compras"  ? telaCompras() :
     aba === "dinheiro" ? telaDinheiro() :
     aba === "mais"     ? telaMais() : telaHoje();
@@ -2225,6 +2724,7 @@ async function carregar(){
   S.notas   = await todos("notas");
   S.lugares = await todos("lugares");
   S.itens   = await todos("itens");
+  S.alimentos = await todos("alimentos");
   var cfg = await todos("config");
   S.config = cfg[0] || {id:"app"};
   S.grupos.sort(function(a, b){ return (a.ordem || 9) - (b.ordem || 9); });
