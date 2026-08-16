@@ -1344,7 +1344,11 @@ function fmtDaqui(min){
 /* ==========================================================================
    BANCO
    ========================================================================== */
-var DB_NOME = "maya", DB_VER = 1, _db = null;
+/* ATENÇÃO: ao acrescentar uma loja em LOJAS, SUBA O DB_VER.
+   Sem isso o onupgradeneeded não roda em quem já tem o app instalado, a loja
+   nova não existe, e o app simplesmente não abre. Aconteceu de verdade,
+   quando a nutrição entrou: v1 -> v2. */
+var DB_NOME = "maya", DB_VER = 2, _db = null;
 var LOJAS = ["config","grupos","notas","lugares","itens","alimentos"];
 var S = {config:{id:"app"}, grupos:[], notas:[], lugares:[], itens:[], alimentos:[]};
 
@@ -2738,8 +2742,11 @@ async function carregar(){
     await carregar();
   } catch(e){
     console.error(e);
-    document.body.innerHTML = '<div style="padding:40px;text-align:center">' +
-      'לא הצלחתי לפתוח את המידע.</div>';
+    document.body.innerHTML = '<div style="padding:40px;text-align:center;line-height:1.7">' +
+      '<b>לא הצלחתי לפתוח את המידע.</b><br><br>' +
+      'נסי לרענן את הדף. אם זה חוזר, זו כנראה גרסה ישנה שנתקעה — ' +
+      'סגרי את הכרטיסייה ופתחי מחדש.<br><br>' +
+      '<small style="opacity:.7">' + esc(String(e && e.message || e)) + '</small></div>';
     return;
   }
   render();
