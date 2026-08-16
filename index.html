@@ -542,12 +542,63 @@ function normalizarFala(t){ return tokenizar(t).toks.map(function(x){ return x.t
 /* palavras vazias que não podem sozinhas casar com nada */
 var BOBA_HE = new RegExp("^(\u05E9\u05DC|\u05E2\u05DD|\u05D0\u05EA|\u05D6\u05D4|\u05D0\u05E0\u05D9|\u05DC\u05D9|\u05DC\u05D0|\u05DB\u05DF|\u05D2\u05DD|\u05E8\u05E7|\u05D9\u05E9|\u05D0\u05D9\u05DF|\u05D0\u05D5|\u05E2\u05D5\u05D3)$");
 
+/* ==========================================================================
+   SINGULAR E PLURAL
+   Esta função existe por causa de um relato: "uma ovo" funcionava, "duas
+   ovos" não. Em hebraico o plural TROCA a palavra — ביצה vira ביצים,
+   עגבנייה vira עגבניות — então a tabela, escrita no singular, não casava com
+   nada que ela falasse no plural. E ninguém fala "comi uma ovo".
+
+   As terminações abaixo cobrem o comum. O que escapar, a semelhança pega:
+   "עגבנייות" gerado contra "עגבניות" falado dá 0,88 e passa fácil.
+   ========================================================================== */
+var TERM_H = "\u05D4", TERM_T = "\u05EA";
+var PL_IM = "\u05D9\u05DE", PL_OT = "\u05D5\u05EA";   /* ים / ות, já normalizados */
+
+function variantesHe(t){
+  t = String(t || "");
+  var out = [t];
+  function add(x){ if(x && x.length >= 2 && out.indexOf(x) < 0) out.push(x); }
+  if(t.length < 3) return out;
+
+  if(t.slice(-2) === PL_IM){                 /* שקדים -> שקד, שקדה */
+    add(t.slice(0, -2));
+    add(t.slice(0, -2) + TERM_H);
+  } else if(t.slice(-2) === PL_OT){          /* עגבניות -> עגבניה, עגבנייה */
+    add(t.slice(0, -2));
+    add(t.slice(0, -2) + TERM_H);
+    add(t.slice(0, -2) + "\u05D9" + TERM_H);
+  } else if(t.slice(-1) === TERM_H){         /* ביצה -> ביצות, ביצים */
+    add(t.slice(0, -1) + PL_OT);
+    add(t.slice(0, -1) + PL_IM);
+  } else if(t.slice(-1) === TERM_T){         /* חבילת -> חבילות */
+    add(t.slice(0, -1) + PL_OT);
+  } else {                                   /* תפוח -> תפוחים */
+    add(t + PL_IM);
+    add(t + PL_OT);
+  }
+  /* o reconhecimento oscila entre um e dois yod: עגבניה / עגבנייה */
+  out.slice().forEach(function(x){
+    var y = x.replace(/\u05D9\u05D9/g, "\u05D9");
+    if(y !== x) add(y);
+  });
+  return out;
+}
+
 function termosDe(item){
   var lista = [item.nome].concat(item.apelidos || []);
   var vistos = {}, out = [];
   lista.forEach(function(x){
     var n = normalizarFala(x);
-    if(n && !vistos[n]){ vistos[n] = 1; out.push(n); }
+    if(!n) return;
+    /* as variantes vão na ÚLTIMA palavra, que é o substantivo:
+       "גבינה צהובה" -> "גבינות צהובה" seria errado; o que varia é o núcleo,
+       mas na prática ela fala o conjunto, então variamos a última mesmo. */
+    var partes = n.split(" ");
+    variantesHe(partes[partes.length - 1]).forEach(function(v){
+      var cand = partes.slice(0, -1).concat(v).join(" ");
+      if(cand && !vistos[cand]){ vistos[cand] = 1; out.push(cand); }
+    });
   });
   return out;
 }
@@ -1442,8 +1493,8 @@ var ITENS_SEMENTE = ["חלב","לחם","ביצים","גבינה",
 var ALIMENTOS_SEMENTE = [
   ["\u05D7\u05DC\u05D1",61,3.2,4.7,3.3,240], ["\u05D7\u05DC\u05D1 \u05D3\u05DC \u05E9\u05D5\u05DE\u05DF",42,3.4,5,1,240],
   ["\u05D9\u05D5\u05D2\u05D5\u05E8\u05D8",61,3.5,4.7,3.3,150], ["\u05D9\u05D5\u05D2\u05D5\u05E8\u05D8 \u05D9\u05D5\u05D5\u05E0\u05D9",97,9,3.6,5,150],
-  ["\u05E7\u05D5\u05D8\u05D2\u05F3",98,11,3.4,5,100], ["\u05D2\u05D1\u05D9\u05E0\u05D4 \u05DC\u05D1\u05E0\u05D4",90,9,3.5,5,30],
-  ["\u05D2\u05D1\u05D9\u05E0\u05D4 \u05E6\u05D4\u05D5\u05D1\u05D4",350,25,2,27,30], ["\u05D2\u05D1\u05D9\u05E0\u05EA \u05E9\u05DE\u05E0\u05EA",342,6,4,34,30],
+  ["קוטג'",98,11,3.4,5,100,["קוטג","גבינת קוטג"]], ["\u05D2\u05D1\u05D9\u05E0\u05D4 \u05DC\u05D1\u05E0\u05D4",90,9,3.5,5,30],
+  ["גבינה צהובה",350,25,2,27,30,["צהובה","גבינה כתומה"]], ["\u05D2\u05D1\u05D9\u05E0\u05EA \u05E9\u05DE\u05E0\u05EA",342,6,4,34,30],
   ["\u05DC\u05D1\u05E0\u05D4",145,6,4,12,50], ["\u05D7\u05DE\u05D0\u05D4",717,0.9,0.1,81,10],
   ["\u05E9\u05DE\u05E0\u05EA \u05D7\u05DE\u05D5\u05E6\u05D4",198,2.4,3,20,30], ["\u05DE\u05E9\u05E7\u05D4 \u05E9\u05E7\u05D3\u05D9\u05DD",15,0.5,0.6,1.1,240],
   ["\u05D1\u05D9\u05E6\u05D4",155,13,1.1,11,50], ["\u05D7\u05D1\u05D9\u05EA\u05D4",196,13,1,15,100],
@@ -1456,13 +1507,13 @@ var ALIMENTOS_SEMENTE = [
   ["\u05D0\u05D5\u05E8\u05D6",130,2.7,28,0.3,150], ["\u05D0\u05D5\u05E8\u05D6 \u05DE\u05DC\u05D0",123,2.7,26,1,150],
   ["\u05E4\u05E1\u05D8\u05D4",131,5,25,1.1,180], ["\u05E7\u05D5\u05E1\u05E7\u05D5\u05E1",112,3.8,23,0.2,150],
   ["\u05D1\u05D5\u05E8\u05D2\u05D5\u05DC",83,3,19,0.2,150], ["\u05E7\u05D9\u05E0\u05D5\u05D0\u05D4",120,4.4,21,1.9,150],
-  ["\u05E9\u05D9\u05D1\u05D5\u05DC\u05EA \u05E9\u05D5\u05E2\u05DC",68,2.4,12,1.4,200], ["\u05D2\u05E8\u05E0\u05D5\u05DC\u05D4",471,10,64,20,50],
+  ["שיבולת שועל",68,2.4,12,1.4,200,["קוואקר","דייסה"]], ["\u05D2\u05E8\u05E0\u05D5\u05DC\u05D4",471,10,64,20,50],
   ["\u05E2\u05D2\u05D1\u05E0\u05D9\u05D9\u05D4",18,0.9,3.9,0.2,120], ["\u05DE\u05DC\u05E4\u05E4\u05D5\u05DF",15,0.7,3.6,0.1,100],
   ["\u05D2\u05D6\u05E8",41,0.9,10,0.2,80], ["\u05D1\u05E6\u05DC",40,1.1,9,0.1,80],
-  ["\u05E4\u05DC\u05E4\u05DC",31,1,6,0.3,120], ["\u05D7\u05E1\u05D4",15,1.4,2.9,0.2,50],
+  ["פלפל",31,1,6,0.3,120,["גמבה","פלפל אדום"]], ["\u05D7\u05E1\u05D4",15,1.4,2.9,0.2,50],
   ["\u05DB\u05E8\u05D5\u05D1",25,1.3,6,0.1,80], ["\u05D1\u05E8\u05D5\u05E7\u05D5\u05DC\u05D9",34,2.8,7,0.4,100],
   ["\u05DB\u05E8\u05D5\u05D1\u05D9\u05EA",25,1.9,5,0.3,100], ["\u05E7\u05D9\u05E9\u05D5\u05D0",17,1.2,3.1,0.3,120],
-  ["\u05D7\u05E6\u05D9\u05DC",25,1,6,0.2,120], ["\u05EA\u05E4\u05D5\u05D7 \u05D0\u05D3\u05DE\u05D4",77,2,17,0.1,150],
+  ["\u05D7\u05E6\u05D9\u05DC",25,1,6,0.2,120], ["תפוח אדמה",77,2,17,0.1,150,["תפוחי אדמה","פירה"]],
   ["\u05D1\u05D8\u05D8\u05D4",86,1.6,20,0.1,150], ["\u05EA\u05D9\u05E8\u05E1",86,3.2,19,1.2,100],
   ["\u05D0\u05E4\u05D5\u05E0\u05D4",81,5.4,14,0.4,100], ["\u05D6\u05D9\u05EA\u05D9\u05DD",115,0.8,6,11,30],
   ["\u05D0\u05D1\u05D5\u05E7\u05D3\u05D5",160,2,9,15,100], ["\u05E4\u05D8\u05E8\u05D5\u05D6\u05D9\u05DC\u05D9\u05D4",36,3,6,0.8,10],
@@ -1505,7 +1556,62 @@ var ALIMENTOS_SEMENTE = [
   ["\u05D2\u05DC\u05D9\u05D3\u05D4",207,3.5,24,11,60], ["\u05D1\u05D9\u05E1\u05E7\u05D5\u05D5\u05D9\u05D8",450,7,70,16,10],
   ["\u05D3\u05D1\u05E9",304,0.3,82,0,20], ["\u05E1\u05D5\u05DB\u05E8",387,0,100,0,5],
   ["\u05E8\u05D9\u05D1\u05D4",278,0.4,69,0.1,20], ["\u05D1\u05DE\u05D1\u05D4",550,15,45,35,25],
-  ["\u05D5\u05E4\u05DC",480,5,65,22,30], ["\u05D7\u05DC\u05D1\u05D4",550,12,50,33,30]
+  ["ופל",480,5,65,22,30], ["חלבה",550,12,50,33,30],
+
+  /* ---- acrescentados depois do uso real: ela pediu mozzarela e não existia.
+     A regra que sobrou disso: quando faltar um alimento, ACRESCENTE aqui em
+     vez de deixar ela digitar os valores toda vez. ---- */
+  ["מוצרלה",280,22,2,22,30,["מוזרלה","מוצארלה"]],
+  ["פטה",264,14,4,21,30,["גבינת פטה"]],
+  ["בולגרית",270,15,3,22,30,["גבינה בולגרית"]],
+  ["ריקוטה",174,11,3,13,50], ["פרמזן",431,38,4,29,15,["פרמז'ן"]],
+  ["קממבר",300,20,0.5,24,30], ["צפתית",250,17,3,19,30,["גבינה צפתית"]],
+  ["גבינת עיזים",364,22,2,30,30,["גבינת עזים"]],
+  ["טופו",76,8,1.9,4.8,100], ["אדממה",122,11,10,5,100],
+  ["סייטן",370,75,14,2,100],
+  ["אבקת חלבון",380,80,7,4,30,["חלבון","שייק חלבון"]],
+  ["קורנפלקס",380,7,84,1,30,["דגני בוקר"]],
+  ["פתיתים",350,11,71,1.5,120], ["פריכיות",387,8,81,3,10,["פריכיות אורז"]],
+  ["טורטייה",310,8,50,8,50,["טורטיה","רפאה"]],
+  ["לאפה",275,9,55,1.2,90], ["סביח",250,8,25,13,250],
+  ["מג'דרה",150,5,25,4,200], ["חמין",180,10,18,8,300,["צ'ולנט","צולנט"]],
+  ["קובה",200,8,25,8,100], ["מלפפון חמוץ",11,0.5,2,0.1,50,["חמוצים"]],
+  ["חציל בטחינה",150,3,8,12,100], ["מטבוחה",70,1.5,7,4,100],
+  ["סלט טורקי",60,1.5,7,3,100],
+  ["פסטרמה",150,20,2,7,30], ["סלמי",400,20,2,35,30],
+  ["כבד",135,20,4,4,100], ["אנטרקוט",280,25,0,20,200,["אנטריקוט","סטייק"]],
+  ["בשר טחון",250,17,0,20,150], ["כרעיים",215,25,0,13,200,["שוקיים"]],
+  ["פרגית",200,26,0,10,150], ["סרדינים",208,25,0,11,100],
+  ["הרינג",217,18,0,15,50,["דג מלוח"]],
+  ["פטריות",22,3.1,3.3,0.3,80], ["סלרי",16,0.7,3,0.2,50],
+  ["סלק",43,1.6,10,0.2,100], ["דלעת",26,1,7,0.1,150],
+  ["תרד",23,2.9,3.6,0.4,100], ["רוקט",25,2.6,3.7,0.7,30],
+  ["במיה",33,1.9,7,0.2,100], ["קולורבי",27,1.7,6,0.1,100],
+  ["ארטישוק",47,3.3,11,0.2,100], ["נבטים",23,3,4,0.1,30],
+  ["אפרסמון",127,0.6,34,0.4,150], ["דובדבנים",63,1,16,0.2,100],
+  ["אוכמניות",57,0.7,14,0.3,100], ["פסיפלורה",97,2.2,23,0.7,50],
+  ["ליצ'י",66,0.8,17,0.4,100], ["פומלה",38,0.8,10,0.04,200],
+  ["נקטרינה",44,1.1,11,0.3,140], ["משמש",48,1.4,11,0.4,40],
+  ["שסק",47,0.4,12,0.2,50],
+  ["שומשום",573,17,23,50,15], ["זרעי פשתן",534,18,29,42,15,["פשתן"]],
+  ["צ'יה",486,17,42,31,15,["זרעי צ'יה"]],
+  ["גרעיני דלעת",559,30,11,49,25],
+  ["חמאת שקדים",614,21,19,56,20],
+  ["ממרח שוקולד",539,6,58,31,20,["נוטלה"]],
+  ["חרדל",66,4,5,4,10], ["רוטב סויה",53,8,5,0.6,15,["סויה"]],
+  ["שוקו",80,3.5,12,2,250], ["לימונדה",40,0,10,0,250],
+  ["סודה",0,0,0,0,330,["מים בגז"]], ["תה ירוק",1,0,0.2,0,200],
+  ["אספרסו",2,0.1,0,0,30], ["קפוצינו",55,3,4.5,2.8,200,["קפוצ'ינו"]],
+  ["שייק",100,3,18,2,300,["סמודי"]], ["מיץ גזר",40,0.9,9,0.2,250],
+  ["ערק",231,0,0,0,40], ["וודקה",231,0,0,0,40], ["ויסקי",250,0,0,0,40],
+  ["רוגלך",420,6,50,22,30], ["קרמבו",400,4,60,16,25],
+  ["ביסלי",450,10,65,17,25], ["תפוציפס",536,7,53,35,25,["צ'יפס","ציפס"]],
+  ["פופקורן",387,13,78,4,25], ["חטיף אנרגיה",400,8,60,14,40,["חטיף חלבון"]],
+  ["מאפה",350,7,45,16,100], ["לחם שיפון",259,9,48,3.3,35],
+  ["פיתה מלאה",250,10,48,2,60], ["קרוטונים",400,10,65,12,15],
+  ["שקדי מרק",450,8,60,20,15],
+  ["ג'לי",62,1.2,15,0,100], ["פודינג",130,3,20,4,120],
+  ["מילקי",150,3.5,20,6,120]
 ];
 
 async function semear(){
@@ -1534,13 +1640,25 @@ async function semear(){
       await put("itens", it); S.itens.push(it);
     }
   }
-  if(!S.alimentos.length){
-    for(var m = 0; m < ALIMENTOS_SEMENTE.length; m++){
-      var a = ALIMENTOS_SEMENTE[m];
-      var al = {id:"alim-" + slug(a[0]), nome:a[0], apelidos:[],
-                kcal:a[1], prot:a[2], carb:a[3], gord:a[4], porcao:a[5]};
-      await put("alimentos", al); S.alimentos.push(al);
+  /* Alimento por alimento, como os grupos. Quem já tinha a tabela antiga
+     recebe os que faltam sem perder nada. Em quem já existe, só os APELIDOS
+     são somados — os números dela nunca são sobrescritos. */
+  for(var m = 0; m < ALIMENTOS_SEMENTE.length; m++){
+    var a = ALIMENTOS_SEMENTE[m];
+    var aid = "alim-" + slug(a[0]);
+    var jaTem = null;
+    S.alimentos.forEach(function(x){ if(x.id === aid) jaTem = x; });
+    if(jaTem){
+      var extras = (a[6] || []).filter(function(ap){ return (jaTem.apelidos || []).indexOf(ap) < 0; });
+      if(extras.length){
+        jaTem.apelidos = (jaTem.apelidos || []).concat(extras);
+        await put("alimentos", jaTem);
+      }
+      continue;
     }
+    var al = {id:aid, nome:a[0], apelidos:a[6] || [],
+              kcal:a[1], prot:a[2], carb:a[3], gord:a[4], porcao:a[5]};
+    await put("alimentos", al); S.alimentos.push(al);
   }
 }
 
@@ -1819,7 +1937,36 @@ function telaConfirmar(texto, rascunhos){
         };
         c.appendChild(campo("ערכים", lm,
           d.alimentoId ? "מהטבלה — הערכה, לא מדידה"
-                       : "לא מכיר את זה. אם תמלאי, אזכור להבא"));
+                       : "לא מכיר את זה בדיוק"));
+
+        /* Não conheço o alimento? Em vez de mandar ela procurar os números,
+           ofereço os parecidos da tabela num toque. Digitar caloria à mão
+           tem que ser a última saída, não a primeira. */
+        if(!d.alimentoId){
+          var perto = alimentosParecidos(d.item, 4);
+          if(perto.length){
+            var bl = el("div");
+            bl.appendChild(el("div", "tecido", "<span>אולי התכוונת</span><i></i>"));
+            var chs = el("div", "chips");
+            perto.forEach(function(al){
+              var ch = el("button", "chip",
+                esc(al.nome + " · " + Math.round(al.kcal * (d.gramas || al.porcao) / 100)));
+              ch.onclick = function(){
+                d.alimentoId = al.id;
+                if(!d.gramas) d.gramas = al.porcao;
+                d.kcal = Math.round(al.kcal * d.gramas / 100);
+                d.prot = Math.round(al.prot * d.gramas / 100 * 10) / 10;
+                d.carb = Math.round(al.carb * d.gramas / 100 * 10) / 10;
+                d.gord = Math.round((al.gord || 0) * d.gramas / 100 * 10) / 10;
+                d._mao = false;
+                desenhar();
+              };
+              chs.appendChild(ch);
+            });
+            bl.appendChild(chs);
+            c.appendChild(bl);
+          }
+        }
 
         var chr = el("div", "chips");
         REFEICOES.forEach(function(rf){
@@ -2023,6 +2170,21 @@ async function lembrarItem(nome){
 }
 /* alimento que eu não conhecia e ela informou: guarda por 100 g, e nunca
    mais pergunta. É o "Ensinar" da nutrição. */
+/* os alimentos da tabela mais parecidos com o que ela falou — usados nos
+   botões de "aולי התכוונת". Limiar baixo de propósito: aqui errar é barato,
+   porque ela vê o nome e o número antes de tocar. */
+function alimentosParecidos(texto, quantos){
+  var toks = tokenizar(String(texto || "")).toks;
+  if(!toks.length) return [];
+  var notas = [];
+  S.alimentos.forEach(function(al){
+    var mj = melhorJanela(toks, al);
+    if(mj && mj.s >= 0.42) notas.push({al:al, s:mj.s});
+  });
+  notas.sort(function(a, b){ return b.s - a.s; });
+  return notas.slice(0, quantos || 4).map(function(x){ return x.al; });
+}
+
 async function lembrarAlimento(r){
   if(r.alimentoId || !r.gramas || r.kcal == null) return;
   var nome = String(r.item || "").trim();
