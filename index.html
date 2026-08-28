@@ -1406,9 +1406,9 @@ function fmtDaqui(min){
    Sem isso o onupgradeneeded não roda em quem já tem o app instalado, a loja
    nova não existe, e o app simplesmente não abre. Aconteceu de verdade,
    quando a nutrição entrou: v1 -> v2. */
-var DB_NOME = "maya", DB_VER = 2, _db = null;
-var LOJAS = ["config","grupos","notas","lugares","itens","alimentos"];
-var S = {config:{id:"app"}, grupos:[], notas:[], lugares:[], itens:[], alimentos:[]};
+var DB_NOME = "maya", DB_VER = 3, _db = null;
+var LOJAS = ["config","grupos","notas","lugares","itens","alimentos","cofre"];
+var S = {config:{id:"app"}, grupos:[], notas:[], lugares:[], itens:[], alimentos:[], cofre:null};
 
 function abrirDB(){
   return new Promise(function(ok, err){
@@ -2217,7 +2217,7 @@ async function lembrarLugar(nome){
    ========================================================================== */
 var aba = "hoje", subAba = "";
 
-function irPara(t){ aba = t; subAba = ""; render(); window.scrollTo(0, 0); }
+function irPara(t){ cofreTrancar(); aba = t; subAba = ""; render(); window.scrollTo(0, 0); }
 
 function cabecalho(titulo, sub, icone){
   $("#hdT").textContent = titulo;
@@ -2710,6 +2710,431 @@ function telaNutricao(){
   return v;
 }
 
+/* ==========================================================================
+   COFRE DE SENHAS (סיסמאות)
+   Cifrado de verdade, não escondido atrás de uma tela.
+
+   A senha mestra NÃO é guardada em lugar nenhum. Dela nasce a chave
+   (PBKDF2, 310 mil voltas), e a chave vive SÓ nesta variável, em memória.
+   Fecha o app, troca de aba, passa o tempo — a chave some e o conteúdo
+   volta a ser letra sem sentido, inclusive dentro do arquivo de backup.
+
+   Esqueceu a senha mestra: acabou. Não existe recuperação, e é exatamente
+   isso que faz disto um cofre. O aviso está na tela de criação.
+   ========================================================================== */
+var COFRE_ITERS = 310000, COFRE_SELO = "MAYA-COFRE-OK", COFRE_MINUTOS = 3;
+var PRF_SAL = "maya-cofre-prf-v1";
+
+var _cofreChave = null;   /* a chave. NUNCA vai pro banco nem pro backup. */
+var _cofreLista = null;   /* as entradas decifradas, só enquanto aberto */
+var _cofreRelogio = null;
+var _cofreBusca = "";
+
+var _te = new TextEncoder(), _td = new TextDecoder();
+
+function cB64(b){
+  var s = "", a = new Uint8Array(b);
+  for(var i = 0; i < a.length; i++) s += String.fromCharCode(a[i]);
+  return btoa(s);
+}
+function cDeB64(t){
+  var s = atob(t), a = new Uint8Array(s.length);
+  for(var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i);
+  return a;
+}
+function cAleat(n){ return crypto.getRandomValues(new Uint8Array(n)); }
+
+async function cDerivar(senha, sal, iters){
+  var base = await crypto.subtle.importKey("raw", _te.encode(senha), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    {name:"PBKDF2", salt:sal, iterations:iters, hash:"SHA-256"},
+    base, {name:"AES-GCM", length:256}, true, ["encrypt","decrypt"]);
+}
+async function cCifrar(chave, texto){
+  var iv = cAleat(12);
+  var ct = await crypto.subtle.encrypt({name:"AES-GCM", iv:iv}, chave, _te.encode(texto));
+  return {iv:cB64(iv), ct:cB64(ct)};
+}
+async function cDecifrar(chave, p){
+  var claro = await crypto.subtle.decrypt({name:"AES-GCM", iv:cDeB64(p.iv)}, chave, cDeB64(p.ct));
+  return _td.decode(claro);
+}
+
+async function cofreCriar(senha){
+  var sal = cAleat(16);
+  var chave = await cDerivar(senha, sal, COFRE_ITERS);
+  var reg = {id:"cofre", v:1, sal:cB64(sal), iters:COFRE_ITERS,
+             selo: await cCifrar(chave, COFRE_SELO),
+             dados: await cCifrar(chave, "[]"),
+             bio:null, criado:Date.now()};
+  await put("cofre", reg);
+  S.cofre = reg; _cofreChave = chave; _cofreLista = [];
+  cofreRearmar();
+}
+
+/* O selo é um texto conhecido cifrado com a chave. Se ele não abre, a senha
+   está errada — e o AES-GCM garante isso sem tocar nas entradas. */
+async function cofreAbrir(senha){
+  var reg = S.cofre;
+  var chave = await cDerivar(senha, cDeB64(reg.sal), reg.iters || COFRE_ITERS);
+  try {
+    if((await cDecifrar(chave, reg.selo)) !== COFRE_SELO) throw new Error("x");
+  } catch(e){ throw new Error("errada"); }
+  _cofreChave = chave;
+  _cofreLista = JSON.parse(await cDecifrar(chave, reg.dados));
+  cofreRearmar();
+}
+
+async function cofreGravar(){
+  S.cofre.dados = await cCifrar(_cofreChave, JSON.stringify(_cofreLista));
+  S.cofre.mexido = Date.now();
+  await put("cofre", S.cofre);
+  cofreRearmar();
+}
+
+async function cofreTrocarSenha(velha, nova){
+  var reg = S.cofre;
+  var chaveV = await cDerivar(velha, cDeB64(reg.sal), reg.iters || COFRE_ITERS);
+  try {
+    if((await cDecifrar(chaveV, reg.selo)) !== COFRE_SELO) throw new Error("x");
+  } catch(e){ throw new Error("errada"); }
+  var lista = JSON.parse(await cDecifrar(chaveV, reg.dados));
+  var sal = cAleat(16);
+  var chaveN = await cDerivar(nova, sal, COFRE_ITERS);
+  reg.sal = cB64(sal); reg.iters = COFRE_ITERS;
+  reg.selo  = await cCifrar(chaveN, COFRE_SELO);
+  reg.dados = await cCifrar(chaveN, JSON.stringify(lista));
+  reg.bio = null;            /* a digital embrulhava a chave velha */
+  reg.mexido = Date.now();
+  await put("cofre", reg);
+  S.cofre = reg; _cofreChave = chaveN; _cofreLista = lista;
+  cofreRearmar();
+}
+
+function cofreTrancar(){
+  _cofreChave = null; _cofreLista = null; _cofreBusca = "";
+  clearTimeout(_cofreRelogio);
+}
+function cofreAberto(){ return !!_cofreChave; }
+function cofreRearmar(){
+  clearTimeout(_cofreRelogio);
+  _cofreRelogio = setTimeout(function(){
+    if(_cofreChave){
+      cofreTrancar();
+      if(aba === "mais" && subAba === "cofre") render();
+    }
+  }, COFRE_MINUTOS * 60000);
+}
+/* sai da tela, tranca. Celular na mesa não é celular guardado. */
+document.addEventListener("visibilitychange", function(){
+  if(document.hidden) cofreTrancar();
+});
+
+/* ---------- gerador ----------
+   Aleatoriedade do sistema, sem viés (o resto do módulo seria viés), e sem
+   os caracteres que ninguém distingue à mão: l I O 0 1. */
+var C_MIN = "abcdefghijkmnopqrstuvwxyz";
+var C_MAI = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+var C_NUM = "23456789";
+var C_SIM = "!@#$%&*?-_=+";
+function cSorteio(lim){
+  var teto = Math.floor(256 / lim) * lim, n;
+  do { n = cAleat(1)[0]; } while(n >= teto);
+  return n % lim;
+}
+function cGerar(tam, comSimbolos){
+  var g = [C_MIN, C_MAI, C_NUM];
+  if(comSimbolos !== false) g.push(C_SIM);
+  var todosC = g.join(""), s = [];
+  g.forEach(function(x){ s.push(x[cSorteio(x.length)]); });
+  while(s.length < tam) s.push(todosC[cSorteio(todosC.length)]);
+  for(var i = s.length - 1; i > 0; i--){
+    var j = cSorteio(i + 1), t = s[i]; s[i] = s[j]; s[j] = t;
+  }
+  return s.join("");
+}
+
+/* ---------- biometria ----------
+   A digital NÃO decifra nada por si: ela autentica. O que serve é a extensão
+   PRF do WebAuthn, que devolve um segredo estável — e com ele embrulhamos a
+   chave do cofre. Se o Chrome do aparelho não tiver PRF, isto FALHA e o app
+   volta pra senha digitada. Detectado, nunca suposto: não dá pra testar
+   biometria fora de um celular de verdade. */
+function bioPossivel(){
+  return !!(window.PublicKeyCredential && navigator.credentials &&
+            navigator.credentials.create && location.protocol === "https:");
+}
+async function bioSegredo(rawId){
+  var r = await navigator.credentials.get({publicKey:{
+    challenge: cAleat(32),
+    allowCredentials: rawId ? [{type:"public-key", id:rawId}] : [],
+    userVerification: "required",
+    timeout: 60000,
+    extensions:{prf:{eval:{first:_te.encode(PRF_SAL)}}}
+  }});
+  if(!r) return null;
+  var x = r.getClientExtensionResults();
+  if(!x || !x.prf || !x.prf.results || !x.prf.results.first) return null;
+  return new Uint8Array(x.prf.results.first);
+}
+async function bioLigar(){
+  if(!_cofreChave) throw new Error("fechado");
+  var cred = await navigator.credentials.create({publicKey:{
+    challenge: cAleat(32),
+    rp:{name:"מאיה"},
+    user:{id:cAleat(16), name:"maya", displayName:"מאיה"},
+    pubKeyCredParams:[{type:"public-key", alg:-7}, {type:"public-key", alg:-257}],
+    authenticatorSelection:{authenticatorAttachment:"platform",
+                            userVerification:"required", residentKey:"preferred"},
+    timeout: 60000,
+    extensions:{prf:{}}
+  }});
+  if(!cred) throw new Error("semprf");
+  var segredo = await bioSegredo(cred.rawId);
+  if(!segredo) throw new Error("semprf");
+  var kek = await crypto.subtle.importKey("raw", segredo, "AES-GCM", false, ["encrypt","decrypt"]);
+  var bruta = await crypto.subtle.exportKey("raw", _cofreChave);
+  var iv = cAleat(12);
+  var ct = await crypto.subtle.encrypt({name:"AES-GCM", iv:iv}, kek, bruta);
+  S.cofre.bio = {cred:cB64(cred.rawId), iv:cB64(iv), ct:cB64(ct)};
+  await put("cofre", S.cofre);
+}
+async function bioAbrir(){
+  var b = S.cofre && S.cofre.bio;
+  if(!b) throw new Error("sem");
+  var segredo = await bioSegredo(cDeB64(b.cred));
+  if(!segredo) throw new Error("semprf");
+  var kek = await crypto.subtle.importKey("raw", segredo, "AES-GCM", false, ["encrypt","decrypt"]);
+  var bruta = await crypto.subtle.decrypt({name:"AES-GCM", iv:cDeB64(b.iv)}, kek, cDeB64(b.ct));
+  _cofreChave = await crypto.subtle.importKey("raw", bruta, "AES-GCM", true, ["encrypt","decrypt"]);
+  _cofreLista = JSON.parse(await cDecifrar(_cofreChave, S.cofre.dados));
+  cofreRearmar();
+}
+
+/* ==========================================================================
+   AS TELAS DO COFRE
+   ========================================================================== */
+var SVG_CADEADO = '<svg width="32" height="32" viewBox="0 0 34 34" fill="none" stroke="var(--ocre)" stroke-width="1.1" stroke-linecap="round"><rect x="7" y="14.5" width="20" height="14" rx="4"/><path d="M11.5 14.5v-3.8a5.5 5.5 0 0 1 11 0v3.8"/><circle cx="17" cy="21" r="1.9"/></svg>';
+
+function cofreVoltar(){
+  var b = botao("סגירה", "", function(){
+    cofreTrancar(); subAba = ""; render();
+  });
+  var w = el("div", "linha-btn");
+  w.style.marginBottom = "14px";
+  w.appendChild(b);
+  return w;
+}
+
+function telaCofre(){
+  cabecalho("סיסמאות", "", SVG_CADEADO);
+  if(!S.cofre) return cofreTelaCriar();
+  if(!cofreAberto()) return cofreTelaFechada();
+  return cofreTelaLista();
+}
+
+/* ---- 1. ainda não existe: criar a senha mestra ---- */
+function cofreTelaCriar(){
+  var v = el("div");
+  v.appendChild(cofreVoltar());
+
+  var av = el("div", "card");
+  av.appendChild(el("h3", "serif", "כספת מוצפנת"));
+  av.appendChild(el("p", null,
+    "הסיסמאות נשמרות <b>מוצפנות</b>. בלי הסיסמה הראשית אי אפשר לקרוא אותן — " +
+    "גם לא מתוך קובץ הגיבוי, וגם לא אני."));
+  av.appendChild(el("p", null,
+    "<b>אם תשכחי את הסיסמה הראשית, הכל אבוד.</b> אין שחזור, וזה בדיוק מה " +
+    "שהופך את זה לכספת. כתבי אותה על נייר ושמרי בבית."));
+  v.appendChild(av);
+
+  var c = el("div", "card");
+  var i1 = entrada("password", ""); i1.autocomplete = "new-password";
+  var i2 = entrada("password", ""); i2.autocomplete = "new-password";
+  c.appendChild(campo("סיסמה ראשית", i1, "לפחות 8 תווים"));
+  c.appendChild(campo("שוב, לוודא", i2));
+  var lb = el("div", "linha-btn");
+  lb.appendChild(botao("יצירת הכספת", "pri", async function(){
+    if(i1.value.length < 8){ toast("לפחות 8 תווים"); return; }
+    if(i1.value !== i2.value){ toast("הסיסמאות לא זהות"); return; }
+    try { await cofreCriar(i1.value); render(); toast("הכספת נוצרה"); }
+    catch(e){ toast("לא הצלחתי ליצור"); }
+  }));
+  c.appendChild(lb);
+  v.appendChild(c);
+  return v;
+}
+
+/* ---- 2. existe e está trancada ---- */
+function cofreTelaFechada(){
+  var v = el("div");
+  v.appendChild(cofreVoltar());
+
+  var c = el("div", "card");
+  c.appendChild(el("h3", "serif", "הכספת נעולה"));
+  var ip = entrada("password", ""); ip.autocomplete = "current-password";
+  c.appendChild(campo("סיסמה ראשית", ip));
+
+  var abrir = async function(){
+    if(!ip.value) return;
+    try { await cofreAbrir(ip.value); render(); }
+    catch(e){ ip.value = ""; toast("סיסמה שגויה"); }
+  };
+  ip.onkeydown = function(ev){ if(ev.key === "Enter") abrir(); };
+
+  var lb = el("div", "linha-btn");
+  lb.appendChild(botao("פתיחה", "pri", abrir));
+  if(S.cofre.bio){
+    lb.appendChild(botao("טביעת אצבע", "", async function(){
+      try { await bioAbrir(); render(); }
+      catch(e){ toast("לא הצלחתי — הקלידי את הסיסמה"); }
+    }));
+  }
+  c.appendChild(lb);
+  c.appendChild(el("div", "dica",
+    "הפתיחה לוקחת רגע. זה בכוונה — זה מה שמגן מפני ניחוש."));
+  v.appendChild(c);
+  setTimeout(function(){ ip.focus(); }, 120);
+  return v;
+}
+
+/* ---- 3. aberta ---- */
+function cofreTelaLista(){
+  var v = el("div");
+  v.appendChild(cofreVoltar());
+
+  var topo = el("div", "linha-btn");
+  topo.style.marginBottom = "12px";
+  topo.appendChild(botao("סיסמה חדשה", "pri", function(){
+    cofreFolha({id:uid(), servico:"", usuario:"", senha:"", nota:"", criado:Date.now()}, true);
+  }));
+  topo.appendChild(botao("נעילה", "", function(){ cofreTrancar(); render(); }));
+  v.appendChild(topo);
+
+  var lista = el("div", "card");
+
+  if(_cofreLista.length > 3){
+    var ib = entrada("search", _cofreBusca);
+    ib.placeholder = "חיפוש";
+    ib.oninput = function(){ _cofreBusca = ib.value; pintarCofreLista(lista); };
+    var f = el("div", "f"); f.appendChild(ib);
+    v.appendChild(f);
+  }
+
+  v.appendChild(lista);
+  pintarCofreLista(lista);
+
+  var rod = el("div", "card");
+  rod.appendChild(el("h3", "serif", "הכספת"));
+  var lb = el("div", "linha-btn");
+  if(bioPossivel() && !S.cofre.bio){
+    lb.appendChild(botao("פתיחה בטביעת אצבע", "", async function(){
+      try { await bioLigar(); render(); toast("מוכן"); }
+      catch(e){ toast("המכשיר הזה לא תומך — הסיסמה נשארת"); }
+    }));
+  }
+  if(S.cofre.bio){
+    lb.appendChild(botao("ביטול טביעת אצבע", "", async function(){
+      S.cofre.bio = null; await put("cofre", S.cofre); render(); toast("בוטל");
+    }));
+  }
+  lb.appendChild(botao("שינוי הסיסמה הראשית", "", cofreFolhaTrocar));
+  rod.appendChild(lb);
+  rod.appendChild(el("div", "dica",
+    "הכספת ננעלת לבד אחרי " + COFRE_MINUTOS + " דקות, וגם כשיוצאים מהמסך."));
+  v.appendChild(rod);
+  return v;
+}
+
+function pintarCofreLista(caixa){
+  caixa.innerHTML = "";
+  var q = normHe(_cofreBusca || "");
+  var arr = _cofreLista.slice().sort(function(a, b){
+    return (a.servico || "").localeCompare(b.servico || "", "he");
+  });
+  if(q) arr = arr.filter(function(e){
+    return normHe((e.servico || "") + " " + (e.usuario || "")).indexOf(q) >= 0;
+  });
+  if(!arr.length){
+    caixa.appendChild(el("div", "vazio",
+      _cofreLista.length ? "לא נמצא" : "עוד אין סיסמאות כאן"));
+    return;
+  }
+  arr.forEach(function(e){
+    var b = el("button", "lanc");
+    var t = el("div", "onde", esc(e.servico));
+    if(e.usuario) t.appendChild(el("small", null, esc(e.usuario)));
+    b.appendChild(t);
+    b.onclick = function(){ cofreFolha(e, false); };
+    caixa.appendChild(b);
+  });
+}
+
+function cofreFolha(e, novo){
+  var w = el("div");
+  var is = entrada("text", e.servico);
+  w.appendChild(campo("שם השירות", is));
+  var iu = entrada("text", e.usuario); iu.autocomplete = "off";
+  w.appendChild(campo("שם משתמש", iu));
+
+  var ip = entrada("password", e.senha); ip.autocomplete = "new-password";
+  var linha = el("div", "linha-btn");
+  linha.style.marginTop = "8px";
+  linha.appendChild(botao("הצגה", "", function(){
+    ip.type = (ip.type === "password") ? "text" : "password";
+  }));
+  linha.appendChild(botao("העתקה", "", function(){
+    if(!navigator.clipboard){ ip.type = "text"; toast("סמני והעתיקי"); return; }
+    navigator.clipboard.writeText(ip.value).then(
+      function(){ toast("הועתק"); },
+      function(){ ip.type = "text"; toast("סמני והעתיקי"); });
+  }));
+  linha.appendChild(botao("סיסמה חזקה", "", function(){
+    ip.value = cGerar(16, true); ip.type = "text";
+  }));
+  var caixaS = el("div");
+  caixaS.appendChild(ip); caixaS.appendChild(linha);
+  w.appendChild(campo("סיסמה", caixaS));
+
+  var it = el("textarea"); it.value = e.nota || "";
+  w.appendChild(campo("הערה", it));
+
+  var pes = [];
+  if(!novo){
+    pes.push(botao("מחיקה", "dng", async function(){
+      _cofreLista = _cofreLista.filter(function(x){ return x.id !== e.id; });
+      await cofreGravar(); fecharFolha(); render(); toast("נמחק");
+    }));
+  }
+  pes.push(botao("שמירה", "pri", async function(){
+    if(!is.value.trim()){ toast("צריך שם"); return; }
+    e.servico = is.value.trim(); e.usuario = iu.value.trim();
+    e.senha = ip.value; e.nota = it.value; e.mexido = Date.now();
+    if(novo) _cofreLista.push(e);
+    await cofreGravar(); fecharFolha(); render(); toast("נשמר");
+  }));
+  abrirFolha(novo ? "סיסמה חדשה" : e.servico, w, pes);
+  if(novo) setTimeout(function(){ is.focus(); }, 260);
+}
+
+function cofreFolhaTrocar(){
+  var w = el("div");
+  w.appendChild(el("div", "dica",
+    "אחרי השינוי, הסיסמה הישנה כבר לא פותחת. טביעת האצבע תתבטל וצריך להפעיל שוב."));
+  var i0 = entrada("password", ""); i0.autocomplete = "current-password";
+  var i1 = entrada("password", ""); i1.autocomplete = "new-password";
+  var i2 = entrada("password", ""); i2.autocomplete = "new-password";
+  w.appendChild(campo("הסיסמה הנוכחית", i0));
+  w.appendChild(campo("סיסמה חדשה", i1, "לפחות 8 תווים"));
+  w.appendChild(campo("שוב, לוודא", i2));
+  abrirFolha("שינוי הסיסמה הראשית", w, [botao("שמירה", "pri", async function(){
+    if(i1.value.length < 8){ toast("לפחות 8 תווים"); return; }
+    if(i1.value !== i2.value){ toast("הסיסמאות לא זהות"); return; }
+    try { await cofreTrocarSenha(i0.value, i1.value); fecharFolha(); render(); toast("הוחלף"); }
+    catch(err){ toast("הסיסמה הנוכחית שגויה"); }
+  })]);
+}
+
 function telaMais(){
   cabecalho("עוד", "", "");
   var v = el("div");
@@ -2774,6 +3199,20 @@ function telaMais(){
     "המספרים באים מטבלה, לא מהאוכל שלך. סלט תלוי בכמה שמן שמו בו. " +
     "זו <b>הערכה</b> — טובה למגמה לאורך שבוע, לא למדידה מדויקת."));
   v.appendChild(cn);
+
+  /* O cofre. Fica dentro de עוד porque a barra ja tem seis abas: uma setima
+     nao cabe em tela de 360 px sem cortar texto. */
+  var cs = el("div", "card");
+  cs.appendChild(el("h3", "serif", "סיסמאות"));
+  cs.appendChild(el("p", null, S.cofre
+    ? "כספת מוצפנת. נפתחת עם הסיסמה הראשית."
+    : "מקום מוצפן לסיסמאות, עם סיסמה ראשית אחת."));
+  var lbs = el("div", "linha-btn");
+  lbs.appendChild(botao(S.cofre ? "פתיחת הכספת" : "יצירת כספת", "", function(){
+    subAba = "cofre"; render(); window.scrollTo(0, 0);
+  }));
+  cs.appendChild(lbs);
+  v.appendChild(cs);
 
   var c4 = el("div", "card");
   c4.appendChild(el("h3", "serif", "גיבוי"));
@@ -2854,8 +3293,13 @@ function rodapeApagar(n){
 
 /* ---------- backup ---------- */
 function exportar(){
-  var dados = {versao:1, quando:new Date().toISOString(),
-    grupos:S.grupos, notas:S.notas, lugares:S.lugares, itens:S.itens};
+  /* alimentos e config FALTAVAM aqui: os alimentos que ela ensinou e as metas
+     nao entravam no backup, e sumiam numa troca de aparelho. O cofre entra
+     como esta — cifrado. Sem a senha mestra o arquivo nao revela nada. */
+  var dados = {versao:2, quando:new Date().toISOString(),
+    grupos:S.grupos, notas:S.notas, lugares:S.lugares, itens:S.itens,
+    alimentos:S.alimentos, config:S.config,
+    cofre:S.cofre ? [S.cofre] : []};
   var b = new Blob([JSON.stringify(dados, null, 1)], {type:"application/json"});
   var a = document.createElement("a");
   a.href = URL.createObjectURL(b);
@@ -2869,11 +3313,13 @@ function importar(){
     var f = i.files[0]; if(!f) return;
     try {
       var d = JSON.parse(await f.text());
-      var lojas = ["grupos","notas","lugares","itens"];
+      var lojas = ["grupos","notas","lugares","itens","alimentos","cofre"];
+      if(d.config) await put("config", Object.assign({id:"app"}, d.config));
       for(var k = 0; k < lojas.length; k++){
         var arr = d[lojas[k]] || [];
         for(var j = 0; j < arr.length; j++) await put(lojas[k], arr[j]);
       }
+      cofreTrancar();
       await carregar(); render();
       toast("יובא");
     } catch(e){ toast("הקובץ לא תקין"); }
@@ -2927,6 +3373,7 @@ function render(){
     aba === "nutricao" ? telaNutricao() :
     aba === "compras"  ? telaCompras() :
     aba === "dinheiro" ? telaDinheiro() :
+    (aba === "mais" && subAba === "cofre") ? telaCofre() :
     aba === "mais"     ? telaMais() : telaHoje();
   v.appendChild(tela);
   v.appendChild(el("div", "rodape-boho"));
@@ -2938,6 +3385,7 @@ async function carregar(){
   S.lugares = await todos("lugares");
   S.itens   = await todos("itens");
   S.alimentos = await todos("alimentos");
+  S.cofre     = (await todos("cofre"))[0] || null;
   var cfg = await todos("config");
   S.config = cfg[0] || {id:"app"};
   S.grupos.sort(function(a, b){ return (a.ordem || 9) - (b.ordem || 9); });
