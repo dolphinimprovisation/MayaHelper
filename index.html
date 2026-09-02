@@ -1176,6 +1176,105 @@ var GATILHO_IDEIA = ["\u05E8\u05E2\u05D9\u05D5\u05DF","\u05E8\u05E2\u05D9\u05D5\
 
 GATILHO_SONHO = normLista(GATILHO_SONHO); GATILHO_IDEIA = normLista(GATILHO_IDEIA);
 
+/* ==========================================================================
+   RECEITAS
+   Uma máquina de estados falada, e foi a Maya que a desenhou: cada palavra
+   troca a seção, e ela nunca toca na tela enquanto dita.
+
+     מתכון  -> daqui é o NOME
+     מצרכים -> daqui são os INGREDIENTES
+     הערות  -> daqui são as OBSERVAÇÕES
+
+   Ela dita em pedaços: hoje o nome, amanhã os ingredientes. Quem junta os
+   pedaços é o app, pelo nome — aqui só se lê o que foi dito.
+
+   As observações NÃO são modo de preparo. São o que ela aprendeu fazendo
+   ("a manteiga tem que estar fria") — o que não estava no Instagram. Quase
+   sempre vazias, e é por isso que não viraram uma lista de passos.
+   ========================================================================== */
+var GATILHO_RECEITA = ["\u05DE\u05EA\u05DB\u05D5\u05DF","\u05DE\u05EA\u05DB\u05D5\u05E0\u05D9\u05DD"];      /* מתכון / מתכונים */
+var MARCA_MITZ      = ["\u05DE\u05E6\u05E8\u05DB\u05D9\u05DD","\u05DE\u05E8\u05DB\u05D9\u05D1\u05D9\u05DD"]; /* מצרכים / מרכיבים */
+var MARCA_HEAROT    = ["\u05D4\u05E2\u05E8\u05D5\u05EA","\u05D4\u05E2\u05E8\u05D4"];                          /* הערות / הערה */
+GATILHO_RECEITA = normLista(GATILHO_RECEITA);
+MARCA_MITZ      = normLista(MARCA_MITZ);
+MARCA_HEAROT    = normLista(MARCA_HEAROT);
+
+/* Corte dos ingredientes. É quase o partirCompras, com UMA diferença que
+   importa aqui e não lá: o "ו" colado.
+
+   O tokenizador já resolveu a parte difícil. "עשרים ושתיים" (22) vira UM
+   token só, e o campo w dele não tem ו nenhum — o número composto já está
+   fundido. Já "ומאתיים" vira o token 200 com w = "ומאתיים", o ו preservado.
+
+   Então basta olhar o w, que é a palavra como ela falou, com prefixo: se
+   começa com ו, ali separa. O partirCompras olha o t, que já perdeu essa
+   informação nos números — e por isso "כוס סוכר ומאתיים גרם חמאה" ficava
+   grudado. Ficou em função própria: mexer no partirCompras arriscaria a
+   lista de compras e a nutrição, que funcionam e têm testes de sobra. */
+function partirReceita(toks, iInicio, iFim){
+  var partes = [], atual = [];
+  for(var i = iInicio; i < iFim; i++){
+    var t = toks[i];
+    if(t.t === "|"){ if(atual.length){ partes.push(atual); atual = []; } continue; }
+    var w = t.w || t.t;
+    if(w.length >= 3 && w[0] === "\u05D5" && atual.length){
+      partes.push(atual);
+      atual = [{t:semVav(t.t), a:t.a, b:t.b, w:t.w, d:t.d}];
+      continue;
+    }
+    atual.push(t);
+  }
+  if(atual.length) partes.push(atual);
+  return partes;
+}
+
+/* Devolve null quando não é receita — inclusive quando ela só disse "מתכון"
+   sem nome nenhum. Nome vazio viraria uma receita fantasma que ninguém acha
+   depois. */
+function lerReceita(toks, orig){
+  var tt = toks.map(function(x){ return x.t; });
+  function bateEm(i, lista){
+    for(var j = 0; j < lista.length; j++)
+      if(formas(tt[i]).indexOf(lista[j]) >= 0) return true;
+    return false;
+  }
+  var iRec = -1;
+  for(var i = 0; i < tt.length && iRec < 0; i++) if(bateEm(i, GATILHO_RECEITA)) iRec = i;
+  if(iRec < 0) return null;
+
+  var iMitz = -1, iHear = -1;
+  for(var k = iRec + 1; k < tt.length; k++){
+    if(iMitz < 0 && bateEm(k, MARCA_MITZ)) iMitz = k;
+    if(iHear < 0 && bateEm(k, MARCA_HEAROT)) iHear = k;
+  }
+  /* se as observações vierem antes dos ingredientes, quem manda é a ordem
+     falada — não a ordem que eu imaginei */
+  var fimNome = Math.min(
+    iMitz < 0 ? tt.length : iMitz,
+    iHear < 0 ? tt.length : iHear);
+
+  var nome = trechoOriginal(orig, toks.slice(iRec + 1, fimNome))
+               .replace(/^[\s,]+|[\s,]+$/g, "");
+  if(!nome) return null;
+
+  var ingredientes = [];
+  if(iMitz >= 0){
+    var fimMitz = (iHear > iMitz) ? iHear : tt.length;
+    partirReceita(toks, iMitz + 1, fimMitz).forEach(function(p){
+      var txt = trechoOriginal(orig, p).replace(/^[\s,\u05D5]+|[\s,]+$/g, "").trim();
+      if(txt) ingredientes.push(txt);
+    });
+  }
+
+  var observacoes = "";
+  if(iHear >= 0){
+    var fimHear = (iMitz > iHear) ? iMitz : tt.length;
+    observacoes = trechoOriginal(orig, toks.slice(iHear + 1, fimHear))
+                    .replace(/^[\s,]+|[\s,]+$/g, "");
+  }
+  return {nome:nome, ingredientes:ingredientes, observacoes:observacoes};
+}
+
 /* ctx = {hoje, agora, grupos, lugares, itensCompra} */
 function interpretar(fala, ctx){
   ctx = ctx || {};
@@ -1204,6 +1303,19 @@ function interpretar(fala, ctx){
     return false;
   }
   var textoLimpo = trechoOriginal(orig, toks);
+
+  /* 0. receita — primeiro de todos, porque o gatilho é explícito e a frase
+     inteira pertence a ela. Sem o grupo, nada acontece: o app não inventa
+     grupo que ela apagou. */
+  var gRec = porChave("receitas") || porComp("receita");
+  if(gRec){
+    var rec = lerReceita(toks, orig);
+    if(rec){
+      return [{tipo:"receita", grupoId:gRec.id, nome:rec.nome,
+               ingredientes:rec.ingredientes, observacoes:rec.observacoes,
+               fala:fala}];
+    }
+  }
 
   /* 1. compras — antes de tudo, porque uma frase vira VÁRIOS registros */
   var iCompra = -1;
@@ -1406,9 +1518,9 @@ function fmtDaqui(min){
    Sem isso o onupgradeneeded não roda em quem já tem o app instalado, a loja
    nova não existe, e o app simplesmente não abre. Aconteceu de verdade,
    quando a nutrição entrou: v1 -> v2. */
-var DB_NOME = "maya", DB_VER = 3, _db = null;
-var LOJAS = ["config","grupos","notas","lugares","itens","alimentos","cofre"];
-var S = {config:{id:"app"}, grupos:[], notas:[], lugares:[], itens:[], alimentos:[], cofre:null};
+var DB_NOME = "maya", DB_VER = 4, _db = null;
+var LOJAS = ["config","grupos","notas","lugares","itens","alimentos","cofre","receitas"];
+var S = {config:{id:"app"}, grupos:[], notas:[], lugares:[], itens:[], alimentos:[], cofre:null, receitas:[]};
 
 function abrirDB(){
   return new Promise(function(ok, err){
@@ -1465,7 +1577,9 @@ var GRUPOS_SEMENTE = [
   {chave:"compras",  nome:"קניות",        comportamento:"lista",      ordem:5,
    apelidos:["רשימה","סופר"]},
   {chave:"nutricao", nome:"תזונה",       comportamento:"nutricao",   ordem:6,
-   apelidos:["אוכל","קלוריות","אכלתי"]}
+   apelidos:["אוכל","קלוריות","אכלתי"]},
+  {chave:"receitas", nome:"מתכונים",   comportamento:"receita",    ordem:7,
+   apelidos:["מתכון"]}
 ];
 
 /* lugares e pessoas do financeiro — ela vai ensinar o resto com o uso */
@@ -1663,6 +1777,18 @@ async function semear(){
 }
 
 function grupoPor(id){ var g = null; S.grupos.forEach(function(x){ if(x.id === id) g = x; }); return g; }
+/* Cada grupo tem uma tela. Grupo que ela criar depois nao tem destino ainda,
+   e nesse caso o chip continua sendo so um rotulo, sem fingir que leva a algum
+   lugar. */
+var DESTINO_GRUPO = {
+  agenda:   {aba:"hoje"},
+  sonhos:   {aba:"notas", sub:"sonhos"},
+  ideias:   {aba:"notas", sub:"ideias"},
+  dinheiro: {aba:"dinheiro"},
+  compras:  {aba:"compras"},
+  nutricao: {aba:"nutricao"},
+  receitas: {aba:"mais", sub:"receitas"}
+};
 function grupoChave(c){ var g = null; S.grupos.forEach(function(x){ if(x.chave === c) g = x; }); return g; }
 
 /* ==========================================================================
@@ -1832,6 +1958,15 @@ function confirmar(texto){
     itensCompra: S.itens, lugares: S.lugares, alimentos: S.alimentos
   };
   var rascunhos = interpretar(texto, ctx);
+  /* Nome idêntico junta calado. Parecido PERGUNTA — "עוגת שוקולד" e
+     "עוגת שוקולד של אמא" podem ser duas receitas, e escrever por cima da
+     errada é o tipo de erro calado que este app não comete. */
+  rascunhos.forEach(function(d){
+    if(d.tipo !== "receita") return;
+    var m = acharReceita(d.nome);
+    if(m.exata) d.receitaId = m.exata.id;
+    else if(m.parecidas.length) d._parecidas = m.parecidas;
+  });
   telaConfirmar(texto, rascunhos);
 }
 
@@ -1987,6 +2122,36 @@ function telaConfirmar(texto, rascunhos){
         io.oninput = function(){ d.onde = io.value; };
         lv.appendChild(iv); lv.appendChild(io);
         c.appendChild(campo("₪ " + (g ? g.nome : ""), lv));
+      } else if(d.tipo === "receita"){
+        var inr = entrada("text", d.nome || "");
+        inr.oninput = function(){ d.nome = inr.value; };
+        c.appendChild(campo("שם המתכון", inr));
+
+        var tin = el("textarea");
+        tin.value = (d.ingredientes || []).join("\n");
+        tin.style.minHeight = "128px";
+        tin.oninput = function(){
+          d.ingredientes = tin.value.split("\n")
+            .map(function(x){ return x.trim(); })
+            .filter(function(x){ return x; });
+        };
+        c.appendChild(campo("מצרכים", tin, "מצרך אחד בכל שורה"));
+
+        var tob = el("textarea");
+        tob.value = d.observacoes || "";
+        tob.oninput = function(){ d.observacoes = tob.value; };
+        c.appendChild(campo("הערות", tob));
+
+        if(d.receitaId){
+          var jaR = receitaPorId(d.receitaId);
+          if(jaR) c.appendChild(el("div", "dica",
+            "מתווסף למתכון קיים: " + esc(jaR.nome)));
+        } else if(d._parecidas){
+          c.appendChild(blocoBotoes("להוסיף למתכון קיים?",
+            d._parecidas.map(function(rr){ return {rotulo:rr.nome, v:rr.id}; })
+              .concat([{rotulo:"מתכון חדש", v:null}]),
+            function(o){ d.receitaId = o.v; d._parecidas = null; desenhar(); }));
+        }
       } else {
         var ta = el("textarea");
         ta.value = d.texto || "";
@@ -2129,6 +2294,12 @@ function telaConfirmar(texto, rascunhos){
          inventar um. O total do dia avisa quantos itens ficaram sem valor. */
       if(d.tipo === "comida" && !String(d.item || "").trim()) return cobrar(i, "חסר שם למאכל.");
       if(d.tipo === "nota" && !String(d.texto || "").trim()) return cobrar(i, "אין טקסט.");
+      if(d.tipo === "receita"){
+        if(!String(d.nome || "").trim()) return cobrar(i, "חסר שם למתכון.");
+        /* Parecido e ainda sem escolha: perguntar de novo é melhor que
+           escrever por cima da receita errada. */
+        if(d._parecidas) return cobrar(i, "להוסיף לקיים או חדש? בחרי.");
+      }
       if(d.tipo === "compromisso" && !d.data) return cobrar(i, "חסר תאריך.");
     }
 
@@ -2141,6 +2312,7 @@ function telaConfirmar(texto, rascunhos){
         r.comprado = false;
         await lembrarItem(r.item);
       }
+      if(r.tipo === "receita"){ await salvarReceita(r); continue; }
       if(r.tipo === "gasto" && r.onde) await lembrarLugar(r.onde);
       if(r.tipo === "comida") await lembrarAlimento(r);
       await put("notas", r);
@@ -2217,7 +2389,7 @@ async function lembrarLugar(nome){
    ========================================================================== */
 var aba = "hoje", subAba = "";
 
-function irPara(t){ cofreTrancar(); aba = t; subAba = ""; render(); window.scrollTo(0, 0); }
+function irPara(t, sub){ cofreTrancar(); aba = t; subAba = sub || ""; render(); window.scrollTo(0, 0); }
 
 function cabecalho(titulo, sub, icone){
   $("#hdT").textContent = titulo;
@@ -2914,15 +3086,18 @@ async function bioAbrir(){
 /* ==========================================================================
    AS TELAS DO COFRE
    ========================================================================== */
+var SVG_PANELA = '<svg width="32" height="32" viewBox="0 0 34 34" fill="none" stroke="var(--salvia)" stroke-width="1.1" stroke-linecap="round"><path d="M6 13.5h22v9a5 5 0 0 1-5 5H11a5 5 0 0 1-5-5z"/><path d="M6 16H3.5M28 16h2.5M13 9.5V7M17 9.5V6M21 9.5V7"/></svg>';
 var SVG_CADEADO = '<svg width="32" height="32" viewBox="0 0 34 34" fill="none" stroke="var(--ocre)" stroke-width="1.1" stroke-linecap="round"><rect x="7" y="14.5" width="20" height="14" rx="4"/><path d="M11.5 14.5v-3.8a5.5 5.5 0 0 1 11 0v3.8"/><circle cx="17" cy="21" r="1.9"/></svg>';
 
 function cofreVoltar(){
-  var b = botao("סגירה", "", function(){
-    cofreTrancar(); subAba = ""; render();
+  return cofreVoltarPara("סגירה", function(){
+    cofreTrancar(); subAba = "";
   });
+}
+function cofreVoltarPara(rotulo, antes){
   var w = el("div", "linha-btn");
   w.style.marginBottom = "14px";
-  w.appendChild(b);
+  w.appendChild(botao(rotulo, "", function(){ antes(); render(); window.scrollTo(0, 0); }));
   return w;
 }
 
@@ -3135,6 +3310,263 @@ function cofreFolhaTrocar(){
   })]);
 }
 
+/* ==========================================================================
+   MATKONIM (מתכונים) — as receitas dela
+   Só as que ela coleta e JÁ TESTOU. Não é banco de receitas, não tem valor
+   nutritivo, não tem modo de preparo em passos. É o caderno dela.
+
+   Ela dita de qualquer tela, e em pedaços: hoje o nome, amanhã os
+   ingredientes. Quem junta os pedaços é o casamento por nome aqui embaixo.
+   Corrigir é com o dedo — decisão dela, e evita que uma fala mal ouvida
+   estrague uma receita que já estava certa.
+   ========================================================================== */
+
+function receitaPorId(id){
+  var r = null; S.receitas.forEach(function(x){ if(x.id === id) r = x; }); return r;
+}
+
+/* Idêntico acrescenta calado. Parecido pergunta. Novo cria.
+
+   São DUAS semelhanças diferentes, e uma só não basta:
+
+   1. Deformação — o reconhecimento ouviu "עוגת שוקולט" em vez de
+      "עוגת שוקולד". Distância de edição resolve, e o limiar é alto.
+
+   2. Prefixo — "עוגת שוקולד" e "עוגת שוקולד של אמא". Aqui a distância
+      dá 0,61, e "סלט" contra "סלט ירקות" dá 0,33: abaixo de nomes que
+      não têm nada a ver ("עוגת גבינה" contra "עוגת שוקולד" dá 0,45).
+      Baixar o limiar juntaria receitas diferentes. Então este caso é
+      tratado pelo que ele é: um nome que começa com o outro.
+
+   Nos dois casos o app PERGUNTA. Só o nome idêntico junta calado. */
+function acharReceita(nome){
+  var alvo = normHe(String(nome || "").trim());
+  if(!alvo) return {exata:null, parecidas:[]};
+  var exata = null, parecidas = [];
+  S.receitas.forEach(function(r){
+    var n = normHe(r.nome || "");
+    if(n === alvo){ exata = r; return; }
+    if(parecido(n, alvo) >= 0.72 || prefixoDePalavra(n, alvo)) parecidas.push(r);
+  });
+  return {exata:exata, parecidas:parecidas};
+}
+/* "começa com", parando em palavra inteira — senão "עוגה" casaria com
+   "עוגת גבינה", que são coisas diferentes. */
+function prefixoDePalavra(a, b){
+  if(a.length < 3 || b.length < 3) return false;
+  var curto = a.length < b.length ? a : b;
+  var longo = a.length < b.length ? b : a;
+  return longo.indexOf(curto + " ") === 0;
+}
+
+async function salvarReceita(d){
+  var alvo = d.receitaId ? receitaPorId(d.receitaId) : null;
+  if(alvo){
+    /* acrescenta, não substitui: ela lembrou de mais um ingrediente */
+    var novos = (d.ingredientes || []).filter(function(x){ return String(x).trim(); });
+    alvo.ingredientes = (alvo.ingredientes || []).concat(novos);
+    if(d.observacoes){
+      alvo.observacoes = (alvo.observacoes ? alvo.observacoes + "\n" : "") + d.observacoes;
+    }
+    alvo.mexido = Date.now();
+    await put("receitas", alvo);
+    return alvo;
+  }
+  var nova = {id:uid(), nome:String(d.nome || "").trim(),
+              ingredientes:(d.ingredientes || []).filter(function(x){ return String(x).trim(); }),
+              observacoes:d.observacoes || "",
+              criado:Date.now(), mexido:Date.now()};
+  await put("receitas", nova);
+  S.receitas.push(nova);
+  return nova;
+}
+
+/* ---------- a lista ---------- */
+var _buscaReceita = "";
+var _receitaAberta = null;
+
+function telaReceitas(){
+  if(_receitaAberta) return telaReceitaUma();
+  cabecalho("מתכונים", "", SVG_PANELA);
+  var v = el("div");
+  v.appendChild(cofreVoltarPara("סגירה", function(){ subAba = ""; }));
+
+  var d = el("div", "card");
+  d.appendChild(el("p", null,
+    "כדי להוסיף מתכון, פשוט דברי מכל מסך:<br>" +
+    "<b>מתכון</b> עוגת שוקולד <b>מצרכים</b> שלוש ביצים, כוס סוכר <b>הערות</b> החמאה קרה"));
+  d.appendChild(el("div", "dica",
+    "אפשר גם בחלקים: היום השם, מחר המצרכים. אני מחברת לפי השם."));
+  v.appendChild(d);
+
+  var lista = el("div", "card");
+  if(S.receitas.length > 4){
+    var ib = entrada("search", _buscaReceita);
+    ib.placeholder = "חיפוש";
+    ib.oninput = function(){ _buscaReceita = ib.value; pintarReceitas(lista); };
+    var f = el("div", "f"); f.appendChild(ib);
+    v.appendChild(f);
+  }
+  v.appendChild(lista);
+  pintarReceitas(lista);
+  return v;
+}
+
+/* A busca entra nos ingredientes também: o valor de guardar receita aparece
+   quando ela procura "ענבים" e acha o bolo que fez em março. */
+function pintarReceitas(caixa){
+  caixa.innerHTML = "";
+  var q = normHe(String(_buscaReceita || "").trim());
+  var arr = S.receitas.slice().sort(function(a, b){
+    return (a.nome || "").localeCompare(b.nome || "", "he");
+  });
+  if(q) arr = arr.filter(function(r){
+    return normHe((r.nome || "") + " " + (r.ingredientes || []).join(" ") +
+                  " " + (r.observacoes || "")).indexOf(q) >= 0;
+  });
+  if(!arr.length){
+    caixa.appendChild(el("div", "vazio",
+      S.receitas.length ? "אין תוצאות" : "עוד אין מתכונים"));
+    return;
+  }
+  arr.forEach(function(r){
+    var b = el("button", "item");
+    var n = (r.ingredientes || []).length;
+    b.appendChild(el("div", "t",
+      '<span class="serif">' + esc(r.nome) + "</span><small>" +
+      (n ? n + " מצרכים" : "בלי מצרכים עדיין") + "</small>"));
+    b.onclick = function(){ _receitaAberta = r.id; render(); window.scrollTo(0, 0); };
+    caixa.appendChild(b);
+  });
+}
+
+/* ---------- uma receita ---------- */
+function telaReceitaUma(){
+  var r = receitaPorId(_receitaAberta);
+  if(!r){ _receitaAberta = null; return telaReceitas(); }
+  cabecalho(r.nome, "", SVG_PANELA);
+  var v = el("div");
+  v.appendChild(cofreVoltarPara("חזרה", function(){ _receitaAberta = null; }));
+
+  /* Marcadas = vão pra lista. Ela desmarca o que já tem em casa, então o
+     padrão é tudo marcado. Estado de tela, não de banco: amanhã ela vai ter
+     coisas diferentes na despensa. */
+  if(!r._marcados) r._marcados = {};
+  (r.ingredientes || []).forEach(function(x, i){
+    if(r._marcados[i] === undefined) r._marcados[i] = true;
+  });
+
+  var c = el("div", "card");
+  c.appendChild(el("h3", "serif", "מצרכים"));
+  if(!(r.ingredientes || []).length){
+    c.appendChild(el("div", "vazio", "אמרי “מתכון " + esc(r.nome) + " מצרכים…”"));
+  } else {
+    var alvo = el("div");
+    c.appendChild(alvo);
+    var pintar = function(){
+      alvo.innerHTML = "";
+      r.ingredientes.forEach(function(x, i){
+        var b = el("button", "item" + (r._marcados[i] ? "" : " feito"));
+        b.appendChild(el("span", "p"));
+        b.appendChild(el("span", "t", esc(x)));
+        b.onclick = function(){ r._marcados[i] = !r._marcados[i]; pintar(); };
+        alvo.appendChild(b);
+      });
+    };
+    pintar();
+
+    var lb = el("div", "linha-btn");
+    lb.style.marginTop = "12px";
+    lb.appendChild(botao("הכל", "", function(){
+      var algumDesmarcado = r.ingredientes.some(function(x, i){ return !r._marcados[i]; });
+      r.ingredientes.forEach(function(x, i){ r._marcados[i] = algumDesmarcado; });
+      pintar();
+    }));
+    lb.appendChild(botao("שליחה לקניות", "pri", async function(){
+      var n = await mandarPraCompras(r);
+      if(n === 0){ toast("לא סימנת כלום"); return; }
+      toast(n === 1 ? "נוסף לקניות" : "נוספו " + n + " לקניות");
+    }));
+    c.appendChild(lb);
+    c.appendChild(el("div", "dica", "הקישי על מצרך שכבר יש לך בבית כדי לא לשלוח אותו."));
+  }
+  v.appendChild(c);
+
+  if(r.observacoes){
+    var co = el("div", "card");
+    co.appendChild(el("h3", "serif", "הערות"));
+    co.appendChild(el("p", null, esc(r.observacoes).replace(/\n/g, "<br>")));
+    v.appendChild(co);
+  }
+
+  var ce = el("div", "card");
+  var le = el("div", "linha-btn");
+  le.appendChild(botao("עריכה", "", function(){ folhaEditarReceita(r); }));
+  le.appendChild(botao("מחיקה", "dng", async function(){
+    await del("receitas", r.id);
+    S.receitas = S.receitas.filter(function(x){ return x.id !== r.id; });
+    _receitaAberta = null; render(); toast("נמחק");
+  }));
+  ce.appendChild(le);
+  v.appendChild(ce);
+  return v;
+}
+
+/* Uma linha por ingrediente. Editar à mão é o caminho combinado pra corrigir:
+   falar acrescenta, o dedo corrige. */
+function folhaEditarReceita(r){
+  var w = el("div");
+  var inm = entrada("text", r.nome);
+  w.appendChild(campo("שם המתכון", inm));
+  var ing = el("textarea");
+  ing.value = (r.ingredientes || []).join("\n");
+  ing.style.minHeight = "150px";
+  w.appendChild(campo("מצרכים", ing, "מצרך אחד בכל שורה"));
+  var obs = el("textarea");
+  obs.value = r.observacoes || "";
+  w.appendChild(campo("הערות", obs));
+  abrirFolha("עריכת מתכון", w, [botao("שמירה", "pri", async function(){
+    if(!inm.value.trim()){ toast("צריך שם"); return; }
+    r.nome = inm.value.trim();
+    r.ingredientes = ing.value.split("\n")
+      .map(function(x){ return x.trim(); })
+      .filter(function(x){ return x; });
+    r.observacoes = obs.value.trim();
+    r._marcados = {};
+    r.mexido = Date.now();
+    await put("receitas", r);
+    fecharFolha(); render(); toast("נשמר");
+  })]);
+}
+
+/* Manda os marcados pra lista de compras, com a quantidade junto — decisão
+   dela: comprar açúcar não depende de quantos copos a receita pede, mas ela
+   quer ver a quantidade pra saber se o pacote de casa dá.
+   NÃO chama lembrarItem: "כוס סוכר" não é vocabulário de compras, e sujaria
+   o casamento por semelhança da lista. */
+async function mandarPraCompras(r){
+  var g = grupoChave("compras");
+  if(!g) return 0;
+  var jaTem = {};
+  S.notas.forEach(function(n){
+    if(n.tipo === "compra" && !n.comprado) jaTem[normHe(n.item || "")] = true;
+  });
+  var n = 0;
+  for(var i = 0; i < (r.ingredientes || []).length; i++){
+    if(!r._marcados[i]) continue;
+    var txt = String(r.ingredientes[i]).trim();
+    if(!txt || jaTem[normHe(txt)]) continue;
+    var nota = {id:uid(), tipo:"compra", grupoId:g.id, item:txt,
+                qtd:null, unidade:null, comprado:false,
+                deReceita:r.nome, criadoEm:new Date().toISOString()};
+    await put("notas", nota);
+    S.notas.push(nota);
+    jaTem[normHe(txt)] = true;
+    n++;
+  }
+  return n;
+}
+
 function telaMais(){
   cabecalho("עוד", "", "");
   var v = el("div");
@@ -3142,8 +3574,15 @@ function telaMais(){
   var c1 = el("div", "card");
   c1.appendChild(el("h3", "serif", "קבוצות"));
   var ch = el("div", "chips");
-  S.grupos.forEach(function(g){ ch.appendChild(el("span", "chip", esc(g.nome))); });
+  S.grupos.forEach(function(g){
+    var d = DESTINO_GRUPO[g.chave];
+    if(!d){ ch.appendChild(el("span", "chip", esc(g.nome))); return; }
+    var b = el("button", "chip grande", esc(g.nome));
+    b.onclick = function(){ irPara(d.aba, d.sub); };
+    ch.appendChild(b);
+  });
   c1.appendChild(ch);
+  c1.appendChild(el("div", "dica", "הקישי כדי לעבור"));
   v.appendChild(c1);
 
   /* A regra de ambiguidade escrita na tela — o documento manda escolher uma,
@@ -3202,6 +3641,18 @@ function telaMais(){
 
   /* O cofre. Fica dentro de עוד porque a barra ja tem seis abas: uma setima
      nao cabe em tela de 360 px sem cortar texto. */
+  var cr = el("div", "card");
+  cr.appendChild(el("h3", "serif", "מתכונים"));
+  cr.appendChild(el("p", null, S.receitas.length
+    ? S.receitas.length + " מתכונים שמורים."
+    : "המתכונים שאת אוספת, בקול."));
+  var lbr = el("div", "linha-btn");
+  lbr.appendChild(botao("פתיחת מתכונים", "", function(){
+    _receitaAberta = null; subAba = "receitas"; render(); window.scrollTo(0, 0);
+  }));
+  cr.appendChild(lbr);
+  v.appendChild(cr);
+
   var cs = el("div", "card");
   cs.appendChild(el("h3", "serif", "סיסמאות"));
   cs.appendChild(el("p", null, S.cofre
@@ -3296,9 +3747,9 @@ function exportar(){
   /* alimentos e config FALTAVAM aqui: os alimentos que ela ensinou e as metas
      nao entravam no backup, e sumiam numa troca de aparelho. O cofre entra
      como esta — cifrado. Sem a senha mestra o arquivo nao revela nada. */
-  var dados = {versao:2, quando:new Date().toISOString(),
+  var dados = {versao:3, quando:new Date().toISOString(),
     grupos:S.grupos, notas:S.notas, lugares:S.lugares, itens:S.itens,
-    alimentos:S.alimentos, config:S.config,
+    alimentos:S.alimentos, config:S.config, receitas:S.receitas,
     cofre:S.cofre ? [S.cofre] : []};
   var b = new Blob([JSON.stringify(dados, null, 1)], {type:"application/json"});
   var a = document.createElement("a");
@@ -3313,7 +3764,7 @@ function importar(){
     var f = i.files[0]; if(!f) return;
     try {
       var d = JSON.parse(await f.text());
-      var lojas = ["grupos","notas","lugares","itens","alimentos","cofre"];
+      var lojas = ["grupos","notas","lugares","itens","alimentos","cofre","receitas"];
       if(d.config) await put("config", Object.assign({id:"app"}, d.config));
       for(var k = 0; k < lojas.length; k++){
         var arr = d[lojas[k]] || [];
@@ -3374,6 +3825,7 @@ function render(){
     aba === "compras"  ? telaCompras() :
     aba === "dinheiro" ? telaDinheiro() :
     (aba === "mais" && subAba === "cofre") ? telaCofre() :
+    (aba === "mais" && subAba === "receitas") ? telaReceitas() :
     aba === "mais"     ? telaMais() : telaHoje();
   v.appendChild(tela);
   v.appendChild(el("div", "rodape-boho"));
@@ -3386,6 +3838,7 @@ async function carregar(){
   S.itens   = await todos("itens");
   S.alimentos = await todos("alimentos");
   S.cofre     = (await todos("cofre"))[0] || null;
+  S.receitas  = await todos("receitas");
   var cfg = await todos("config");
   S.config = cfg[0] || {id:"app"};
   S.grupos.sort(function(a, b){ return (a.ordem || 9) - (b.ordem || 9); });
